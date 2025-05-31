@@ -1,0 +1,20 @@
+[submodule "dependencies/FileReader"]
+	path = dependencies/FileReader
+	url = https://github.com/boongh/FileReader.git
+[submodule "dependencies/MultiFFT"]
+	path = dependencies/MultiFFT
+	url = https://github.com/boongh/MultiFFT.git
+[submodule "Dependencies/multiFFT"]
+	path = Dependencies/multiFFT
+	url = https://github.com/boongh/MultiFFT.git
+[submodule "dependencies/stb"]
+	path = dependencies/stb
+	url = https://github.com/nothings/stb.git
+[submodule "dependencies/imGui"]
+	path = dependencies/imGui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
+[submodule "Dependencies/imGui"]
+	path = Dependencies/imGui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking

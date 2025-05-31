@@ -148,8 +148,6 @@ int main(int, char**)
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
 
-	
-
     while (!glfwWindowShouldClose(window))
 #endif
     {

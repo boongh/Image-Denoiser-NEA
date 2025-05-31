@@ -76,12 +76,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\MultiFFT\include;$(ProjectDir)Dependencies\Imgui\backends;$(ProjectDir)Dependencies\Imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\Programming\Image Denoising NEA\Image Denoising NEA\Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -93,14 +93,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\MultiFFT\include;$(ProjectDir)Dependencies\Imgui\backends;$(ProjectDir)Dependencies\Imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\Programming\Image Denoising NEA\Image Denoising NEA\Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -110,12 +110,12 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\MultiFFT\include;$(ProjectDir)Dependencies\Imgui\backends;$(ProjectDir)Dependencies\Imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\Programming\Image Denoising NEA\Image Denoising NEA\Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -127,14 +127,14 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\MultiFFT\include;$(ProjectDir)Dependencies\Imgui\backends;$(ProjectDir)Dependencies\Imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalLibraryDirectories>E:\Programming\Image Denoising NEA\Image Denoising NEA\Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>$(ProjectDir)Dependencies\glfw\lib-vc2010-64;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;user32.lib;gdi32.lib;shell32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
@@ -156,7 +156,7 @@
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFT.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp" />
-    <ClCompile Include="main.cpp" />
+    <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Dependencies\emscripten\emscripten_mainloop_stub.h" />
