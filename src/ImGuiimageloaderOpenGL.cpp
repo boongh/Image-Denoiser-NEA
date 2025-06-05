@@ -3,6 +3,16 @@
 #include <glad/glad.h>
 #include <iostream>
 #include "ImGuiimageloader.h"
+#include <algorithm>
+
+
+void ImageCollection::clear() {
+	textureIDs.clear();
+	data.clear();
+	widths.clear();
+	heights.clear();
+	channels.clear();
+}
 
 bool LoadImage(unsigned int& textureID, void* data, unsigned int width, unsigned int height, unsigned int channels) {
 
@@ -28,4 +38,24 @@ bool LoadImage(unsigned int& textureID, void* data, unsigned int width, unsigned
 		std::cerr << "Exception occurred while loading image: " << e.what() << std::endl;
 		return false;
 	}
+}
+
+bool LoadMultipleImages(std::vector<unsigned int&> textureID, std::vector<void*>& data, std::vector<unsigned int>& width, std::vector<unsigned int>& height, std::vector<unsigned int>& channels, int count)
+{
+	//Initialize return vals
+	textureID.clear();
+	width.clear();
+	height.clear();
+	channels.clear();
+
+
+}
+
+
+
+std::string normalizePath(const char* rawPath)
+{
+	std::string path(rawPath);
+	std::replace(path.begin(), path.end(), '\\', '/');
+	return path;
 }

@@ -76,7 +76,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -93,7 +94,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -110,7 +112,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -127,7 +130,8 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -142,9 +146,11 @@
     <ClCompile Include="Dependencies\FileReader\src\FileFormatClass\FileFormats.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\FileFormatClass\QOIFormat.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\FileFormatClass\WAVFormat.cpp" />
+    <ClCompile Include="Dependencies\FileReader\src\Reader\ImageReader.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Reader\PPMReader.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Reader\QOIReader.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Reader\WAVReader.cpp" />
+    <ClCompile Include="Dependencies\FileReader\src\Test.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp" />
@@ -159,6 +165,7 @@
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFT.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp" />
+    <ClCompile Include="Dependencies\tinyfiledialogs\tinyfiledialogs.c" />
     <ClCompile Include="src\CustomWidget.cpp" />
     <ClCompile Include="src\ImGuiimageloaderOpenGL.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -187,6 +194,7 @@
     <ClInclude Include="Dependencies\MultiFFT\include\MultiFFT.h" />
     <ClInclude Include="Dependencies\MultiFFT\include\MultiFFTSignal.h" />
     <ClInclude Include="Dependencies\MultiFFT\include\SignalGenerator.h" />
+    <ClInclude Include="Dependencies\tinyfiledialogs\tinyfiledialogs.h" />
     <ClInclude Include="include\CustomWidget.h" />
     <ClInclude Include="include\ImGuiimageloader.h" />
   </ItemGroup>

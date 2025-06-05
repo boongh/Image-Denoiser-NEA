@@ -2,6 +2,30 @@
 
 #include "CustomWidget.h"
 #include "imgui.h"
+#include <tinyfiledialogs.h>
+#include <iostream>
+
+const char* OpenFileDialogue(const char* title, const char* const* filterPatterns, int filterCount)
+{
+    const char* file = tinyfd_openFileDialog(
+        "Select an Image",
+        "",
+        filterCount,
+        filterPatterns,
+        "Image Files",
+		true // Allow multiple file selection
+    );
+
+    if (file) {
+        std::cout << "Selected file: " << file << std::endl;
+        return file;
+    }
+    else {
+        std::cout << "No file selected." << std::endl;
+        return nullptr;
+    }
+
+}
 
 void LoadImageTooltipWidget(unsigned int textureID, ImVec2 dimension, ImVec2 widgetDim, ImVec4 bgColor, float zoom)
 {

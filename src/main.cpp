@@ -41,6 +41,8 @@
 #include <FileReader.h>
 #include <FileWriter.h>
 
+#include <filesystem>
+
 //Custom widgets
 #include <ImGuiimageloader.h>
 #include <CustomWidget.h>
@@ -159,21 +161,27 @@ int main(int, char**)
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
 
-    std::vector<std::string> files(20);
-
-    for (int i = 0; i < files.size(); i++) // For testing purposes, we will run the loop for 1000 iterations before closing the window
-    {
-		files[i] = "test" + std::to_string(i) + ".txt";
-    }
-
-	RGBAImageI imageSource(512, 512, 4);
+    RGBAImageI imageSource(512, 512, 4);
 
     unsigned int textureID = 0;
-     
-    // Load image with 4 channels
-	FileReader::ReadQOI("rsc/Character_Firefly_Splash_Art.qoi", imageSource);
 
-    LoadImage(textureID, reinterpret_cast<void *>(&imageSource.data[0]), imageSource.width, imageSource.height, imageSource.channels);
+    // Load image with 4 channels
+
+
+    const char* x[] = { "*.jpg", "*.png", "*.qoi" };
+
+	const char* file = OpenFileDialogue("Select an Image", x, 3);
+
+	std::cout << normalizePath(file) << std::endl;
+
+
+	//FileReader::ReadImage(normalizePath(file), imageSource);
+    
+    //if (!FileReader::ReadImage(normalizePath(file), imageSource)) {
+	//	std::cout << "Failed to read image file: " << stbi_failure_reason() << normalizePath(file) << std::endl;
+    //}
+
+    LoadImage(textureID, reinterpret_cast<char*>(&imageSource.data[0]), imageSource.width, imageSource.height, imageSource.channels);
 
     while (!glfwWindowShouldClose(window))
 #endif
@@ -229,11 +237,8 @@ int main(int, char**)
 
 
             ImGui::PushStyleVar(ImGuiStyleVar_ImageBorderSize, std::max(1.0f, ImGui::GetStyle().ImageBorderSize));
-            
-            float time = glfwGetTime();
 
-
-            LoadImageTooltipWidget(textureID, ImVec2(imageSource.width, imageSource.height), ImVec2(sin(time) * sin(time) * 64, cos(time) * cos(time) * 64), ImVec4(0, 0, 0, 0), 64);
+            LoadImageTooltipWidget(textureID, ImVec2(imageSource.width, imageSource.height), ImVec2(64, 64), ImVec4(0, 0, 0, 0), 64);
 
             ImGui::PopStyleVar();
         }
@@ -243,12 +248,6 @@ int main(int, char**)
             ImGui::Begin("Hello, world!");                          // Create a window called "Hello, world!" and append into it.
 
             ImGui::Text("This is some useful text.");               // Display some text (you can use a format strings too)
-            ImGui::End();
-        }
-
-        {
-            ImGui::Begin("New window");
-            ImGui::Text("This is a new window");
             ImGui::End();
         }
 
