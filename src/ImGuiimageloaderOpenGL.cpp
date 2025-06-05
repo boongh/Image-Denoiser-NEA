@@ -4,17 +4,10 @@
 #include <iostream>
 #include "ImGuiimageloader.h"
 #include <algorithm>
+#include <sstream>
 
 
-void ImageCollection::clear() {
-	textureIDs.clear();
-	data.clear();
-	widths.clear();
-	heights.clear();
-	channels.clear();
-}
-
-bool LoadImage(unsigned int& textureID, void* data, unsigned int width, unsigned int height, unsigned int channels) {
+bool LoadImage_s(unsigned int& textureID, void* data, unsigned int width, unsigned int height, unsigned int channels) {
 
 	try {
 
@@ -40,7 +33,19 @@ bool LoadImage(unsigned int& textureID, void* data, unsigned int width, unsigned
 	}
 }
 
-bool LoadMultipleImages(std::vector<unsigned int&> textureID, std::vector<void*>& data, std::vector<unsigned int>& width, std::vector<unsigned int>& height, std::vector<unsigned int>& channels, int count)
+bool SplitPaths(const std::string& multi, std::vector<std::string>& singlepaths)
+{
+	std::vector<std::string> paths;
+	std::stringstream ss(multi);
+	std::string token;
+	while (std::getline(ss, token, '|')) {
+		std::replace(token.begin(), token.end(), '\\', '/'); // optional normalization
+		singlepaths.push_back(token);
+	}
+	return true;
+}
+
+bool LoadMultipleImages(std::vector<unsigned int*>& textureID, std::vector<void*>& data, std::vector<unsigned int>& width, std::vector<unsigned int>& height, std::vector<unsigned int>& channels, int count)
 {
 	//Initialize return vals
 	textureID.clear();
@@ -49,6 +54,9 @@ bool LoadMultipleImages(std::vector<unsigned int&> textureID, std::vector<void*>
 	channels.clear();
 
 
+
+
+	return true;
 }
 
 

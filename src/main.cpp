@@ -161,7 +161,6 @@ int main(int, char**)
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
 
-    RGBAImageI imageSource(512, 512, 4);
 
     unsigned int textureID = 0;
 
@@ -172,16 +171,24 @@ int main(int, char**)
 
 	const char* file = OpenFileDialogue("Select an Image", x, 3);
 
-	std::cout << normalizePath(file) << std::endl;
+    std::vector<std::string> paths;
+    SplitPaths(normalizePath(file), paths); // Split the file path into components if needed
 
+	std::cout << paths.size() << " files selected." << std::endl;
 
-	//FileReader::ReadImage(normalizePath(file), imageSource);
+    for (int i = 0; i < paths.size(); i++) {
+	    std::cout << paths[i] << std::endl;
+    }
+
+    RGBAImageI imageSource;
+    
+	FileReader::ReadImage(normalizePath(paths[0].c_str()), imageSource);
     
     //if (!FileReader::ReadImage(normalizePath(file), imageSource)) {
 	//	std::cout << "Failed to read image file: " << stbi_failure_reason() << normalizePath(file) << std::endl;
     //}
-
-    LoadImage(textureID, reinterpret_cast<char*>(&imageSource.data[0]), imageSource.width, imageSource.height, imageSource.channels);
+    
+    LoadImage_s(textureID, reinterpret_cast<char*>(&imageSource.data[0]), imageSource.width, imageSource.height, imageSource.channels);
 
     while (!glfwWindowShouldClose(window))
 #endif
