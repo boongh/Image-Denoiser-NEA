@@ -18,3 +18,12 @@
 	path = Dependencies/imGui
 	url = https://github.com/ocornut/imgui.git
 	branch = docking
+[submodule "Dependencies/FileReader"]
+	path = Dependencies/FileReader
+	url = https://github.com/boongh/FileReader.git
+[submodule "Dependencies/MultiFFT"]
+	path = Dependencies/MultiFFT
+	url = https://github.com/boongh/MultiFFT.git
+[submodule "Dependencies/stb"]
+	path = Dependencies/stb
+	url = https://github.com/nothings/stb.git
