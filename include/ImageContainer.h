@@ -2,32 +2,21 @@
 #include <string>
 #include <vector>
 #include <mutex>
-
-
-/// <summary>
-/// Container class for pixel data in an image.
-/// Supports up to 32 bit RGBA color channels.
-/// </summary>
-class Pixel {
-	public:
-	int r, g, b, a; // RGBA color channels
-	Pixel() : r(0), g(0), b(0), a(255) {}; // Default constructor initializes pixel to transparent black
-	Pixel(int red, int green, int blue, int alpha = 255) : r(red), g(green), b(blue), a(alpha){};
-	// Additional methods for pixel manipulation can be added here
-};
+#include <span>
+#include <FileFormats.h>
+#include <imgui.h>
 
 /// This class is used to manage image data, including loading, decompressing, and manipulating pixel values.
 /// It provides methods to get and set pixel values, as well as to check the status of the image (loaded, decompressed, etc.).
 /// /// The image data is stored in a vector of pixel structures, which contain the red, green, blue, and alpha components of each pixel.
 /// /// The class also includes methods to check if the image is loaded and decompressed, and to retrieve the width, height, and number of channels of the image.
-class ImageEntry {
-private:
+struct ImageEntry {
 	enum class CompressionStatus; // Forward declaration for compression status enum
 
 	/// <summary>
 	/// Thread safety lock to ensure sequential access to the image entry.
 	/// </summary>
-	std::mutex lockstate; // Mutex to protect the state of the image entry
+	mutable std::mutex lockstate; // Mutex to protect the state of the image entry
 
 	/// <summary>
 	/// Status of the image entry.
@@ -38,7 +27,7 @@ private:
 	/// <summary>
 	/// Use count to check safety of compressing image data
 	/// </summary>
-	std::atomic<int> useCount = 0; // Atomic counter for tracking the number of users of this image entry
+	mutable std::atomic<int> useCount = 0; // Atomic counter for tracking the number of users of this image entry
 
 
 	//Metadata for the image
@@ -51,7 +40,20 @@ private:
 
 	/// container for compressing and decompressing image data to save memory.
 	std::vector<uint8_t> imageDataCompressed; // Vector storing compressed image data
-	std::vector<Pixel> imageData; // Vector storing raw image data as Pixel structures
+	RGBAImageI imageData;
+
+
+	/// <summary>
+	/// TextureID used for OpenGL rendering
+	/// </summary>
+	unsigned int textureID;
+	bool TextureLoaded;
+
+
+	/// <summary>
+	/// Release the image for read. No locking.
+	/// </summary>
+	void ReleaseRead() const;
 
 public:
 
@@ -67,17 +69,53 @@ public:
 		DECOMPRESSED, // Image data is decompressed and ready for processing
 	};
 
-
-	ImageEntry(const std::string& filePath)
-		: path(filePath), width(0), height(0), channels(0),
-		status(CompressionStatus::UNLOADED){
-	}
+	/// <summary>
+	/// RAII class to handle automatic acquire and release of resource when running out of scope
+	/// </summary>
+	struct ImageAccess {
+		~ImageAccess();
+	public:
+		const ImageEntry& source;
+		void Release();
+		ImageAccess(ImageEntry& entrySource);
+	};
 
 	/// <summary>
-	/// Get the raw image data read only.
+	/// Initialization of an entry
+	/// Requires manual LoadImage() to fully access it
+	/// </summary>
+	/// <param name="filePath"></param>
+	ImageEntry(const std::string& filePath);
+
+
+	/// <summary>
+	/// Gets read access to the entire image data
 	/// </summary>
 	/// <returns></returns>
-	const std::vector<Pixel>& GetImageData() const;
+	std::span<const PixelRGBA> ReadImageData() const;
+
+
+	/// <summary>
+	/// WIP
+	/// Returns a vector of a span of a rectangular region of the image
+	/// </summary>
+	/// <returns></returns>
+	ImageAccess ReadSpan(int tlx, int tly, int brx, int bry) const;
+
+	/// <summary>
+	/// Check if the pixel is a valid coordinate
+	/// </summary>
+	/// <param name="x"></param>
+	/// <param name="y"></param>
+	/// <returns></returns>
+	bool CheckBound(int x, int y) const;
+
+	/// <summary>
+	/// Writes image data
+	/// </summary>
+	/// <returns></returns>
+	int WriteSpan(int tlx, int tly, std::vector<std::span<PixelRGBA>> src);
+
 
 	/// <summary>
 	/// Sets the color values of a specific pixel in the image.
@@ -93,13 +131,13 @@ public:
 
 
 	/// <summary>
-	/// Get pixel data of a specific pixel in the image.
+	/// Get a copy of the pixel data of a specific pixel in the image.
 	/// </summary>
 	/// <param name="x">X coordinate from top left</param>
 	/// <param name="y">Y coordinate from top left</param>
 	/// <param name="p">Pixel information</param>
 	/// <returns>Return 0 on success, -1 if the coordinates are out of bound, or -2 if the image is not fully loaded memory</returns>
-	int GetPixel(int x, int y, Pixel& p) const;
+	int GetPixel(int x, int y, PixelRGBA& p) const;
 
 
 	/// <summary>
@@ -109,7 +147,14 @@ public:
 	/// <param name="y">The y-coordinate of the pixel to set.</param>
 	/// <param name="p">The pixel value in a container class to assign at the specified coordinates.</param>
 	/// <returns>Returns 0 on success, -1 if the coordinates are out of bounds, or -2 if the image is not fully loaded or decompressed.</returns>
-	int SetPixel(int x, int y, const Pixel& p);
+	int SetPixel(int x, int y, const PixelRGBA& p);
+
+	/// <summary>
+	/// 
+	/// </summary>
+	/// <returns>Texture ID of the image if loaded</returns>
+	unsigned int GetTextureID() const;
+
 
 	/// <summary>
 	/// Load image data from the file path into memory.
@@ -117,11 +162,26 @@ public:
 	/// <returns>0 for success, -1 for error loading image, -2 if image is in use (for whatever reason)</returns>
 	int LoadImage(); // Load the image data from the file path into memory
 
+
+	/// <summary>
+	/// Load the image into an opengl texture
+	/// </summary>
+	/// <returns></returns>
+	int LoadTexture();
+
+
 	/// <summary>
 	/// Releases or unloads the currently loaded image from memory.
 	/// </summary>
 	/// <returns>true if the image was successfully unloaded; false otherwise.</returns>
 	int UnloadImage(); // Unload the image data from memory
+
+
+	/// <summary>
+	/// Unload texture from opengl
+	/// </summary>
+	/// <returns></returns>
+	int UnloadTexture();
 
 	/// <summary>
 	/// Attempts to compress image data.
@@ -141,27 +201,61 @@ public:
 	/// <summary>
 	/// Acquires the image for read. No locking.
 	/// </summary>
-	void Acquire();
-
-	/// <summary>
-	/// Release the image for read. No locking.
-	/// </summary>
-	void Release();
+	ImageAccess AcquireRead() const;
 
 
-	bool IsLoaded() const { return status != CompressionStatus::UNLOADED; } // Check if the image is loaded
-	bool IsDecompressed() const { return status == CompressionStatus::DECOMPRESSED; } // Check if the image is decompressed
-	bool IsFree() const { return useCount.load() == 0; } // Check if the image is free (not in use)
+	//Get status of image
+	bool IsLoaded() const; // Check if the image is loaded
+	bool IsDecompressed() const; // Check if the image is decompressed
+	bool IsFree() const; // Check if the image is free (not in use)
 
 
-	//Getters for metadata
-	int GetWidth() const { return width; }
-	int GetHeight() const { return height; }
-	int GetChannels() const { return channels; }
+	//<--Getters for metadata-->
+	std::string GetFilePath() const;
 
+	int GetWidth() const;
+	int GetHeight() const;
+	int GetChannels() const;
+
+	///<---Disallow copy and moving for now for safety--->
+	///WIP will allow later when processing the same image twice is allowed
+
+	//Disallow copy
+	ImageEntry(const ImageEntry&) = delete;
+	ImageEntry& operator =(const ImageEntry&) = delete;
+
+	//disallow move
+	ImageEntry(ImageEntry&& other) = delete;
+	ImageEntry& operator=(ImageEntry&& other) = delete;
+
+	
 	// Additional methods for processing or accessing image data can be added here
 };
 
-class ImageManager {
+
+
+struct ImageManager {
 	//WIP
+
+	std::vector<ImageEntry*> imageEntries;
+
+public:
+	int GetImageCount();
+
+	int ImportFromFile(std::string path);
+	int LazyLoadImage(int index);
+
+	void Compress(int index);
+	void Decompress(int index);
+
+	void LoadGPU(int index);
+	void UnloadGPU(int index);
+
+
+	void DisplayImage(int index);
+
+	ImageEntry::ImageAccess ReadImage(int id);
+	std::string GetName(int id) const;
+	ImVec2 GetDim(int id) const;
+
 };

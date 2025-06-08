@@ -96,7 +96,10 @@
     <ClCompile Include="src\ImageContainers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="include\ImageContainer.cpp">
+    <ClCompile Include="src\ImageContainer.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -180,6 +183,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\ImageContainer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Application.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

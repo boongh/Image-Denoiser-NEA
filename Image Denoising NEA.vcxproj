@@ -143,6 +143,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\FileFormatClass\FileFormats.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\FileFormatClass\QOIFormat.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\FileFormatClass\WAVFormat.cpp" />
@@ -166,13 +167,14 @@
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp" />
     <ClCompile Include="Dependencies\tinyfiledialogs\tinyfiledialogs.c" />
-    <ClCompile Include="include\ImageContainer.cpp" />
+    <ClCompile Include="src\ImageContainer.cpp" />
     <ClCompile Include="src\CustomWidget.cpp" />
     <ClCompile Include="src\ImageContainers.cpp" />
     <ClCompile Include="src\ImGuiimageloaderOpenGL.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="include\Application.h" />
     <ClInclude Include="Dependencies\emscripten\emscripten_mainloop_stub.h" />
     <ClInclude Include="Dependencies\FileReader\include\FileFormats.h" />
     <ClInclude Include="Dependencies\FileReader\include\FileReader.h" />

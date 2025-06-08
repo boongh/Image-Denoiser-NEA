@@ -33,6 +33,11 @@ bool LoadImage_s(unsigned int& textureID, void* data, unsigned int width, unsign
 	}
 }
 
+bool UnloadImage_s(unsigned int& textureID) {
+	glDeleteTextures(1, &textureID);
+	return false;
+}
+
 bool SplitPaths(const std::string& multi, std::vector<std::string>& singlepaths)
 {
 	std::vector<std::string> paths;

@@ -14,6 +14,8 @@
 /// <returns></returns>
 bool LoadImage_s(unsigned int& textureID, void* data, unsigned int width, unsigned int height, unsigned int channels);
 
+bool UnloadImage_s(unsigned int& textureID);
+
 
 /// <summary>
 /// Load images and create OpenGL textures.
