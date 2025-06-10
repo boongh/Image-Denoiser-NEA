@@ -1,59 +1,60 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <mutex>
+#include <shared_mutex>
 #include <span>
 #include <FileFormats.h>
 #include <imgui.h>
+#include <unordered_map>
 
 /// This class is used to manage image data, including loading, decompressing, and manipulating pixel values.
-/// It provides methods to get and set pixel values, as well as to check the status of the image (loaded, decompressed, etc.).
-/// /// The image data is stored in a vector of pixel structures, which contain the red, green, blue, and alpha components of each pixel.
-/// /// The class also includes methods to check if the image is loaded and decompressed, and to retrieve the width, height, and number of channels of the image.
-struct ImageEntry {
+/// /// The Image Data is stored as RGBAImageI from FileReader library
+class ImageEntry : public std::enable_shared_from_this<ImageEntry> {
+public:
 	enum class CompressionStatus; // Forward declaration for compression status enum
-
-	/// <summary>
-	/// Thread safety lock to ensure sequential access to the image entry.
-	/// </summary>
-	mutable std::mutex lockstate; // Mutex to protect the state of the image entry
+private:
+	
 
 	/// <summary>
 	/// Status of the image entry.
 	/// </summary>
-	CompressionStatus status = CompressionStatus::UNLOADED; // Status of the image data compression
+	CompressionStatus status = CompressionStatus::NOT_LOADED;
 
+	// Can't read when someone is writing
+	// Can't write when someone is reading
+	// Can't write when someone is writing
+	// 
+	// Write permission
+	// Read count
+	// 
+	// Read read
+	// Read write
+	// Write write
+	// Write read
+	// 
+	// Can't read when someone is writing
+	// Can read when someone is 
+	// Read write locks mutex
 
-	/// <summary>
-	/// Use count to check safety of compressing image data
-	/// </summary>
-	mutable std::atomic<int> useCount = 0; // Atomic counter for tracking the number of users of this image entry
+	// More than one person can read
+	// 
+	// 
+	// Only one person can write
 
+	mutable std::shared_mutex lockstate;
 
 	//Metadata for the image
 	int width;
 	int height;
-	int channels; // Number of color channels (e.g., 1 for grayscale, 3 for RGB, 4 for RGBA)
+	int channels;
 
 	/// Path is stored for lazy loading of the image data.
 	std::string path; //file path of the image entry
 
 	/// container for compressing and decompressing image data to save memory.
-	std::vector<uint8_t> imageDataCompressed; // Vector storing compressed image data
+	std::vector<uint8_t> imageDataCompressed;
 	RGBAImageI imageData;
 
-
-	/// <summary>
-	/// TextureID used for OpenGL rendering
-	/// </summary>
-	unsigned int textureID;
-	bool TextureLoaded;
-
-
-	/// <summary>
-	/// Release the image for read. No locking.
-	/// </summary>
-	void ReleaseRead() const;
 
 public:
 
@@ -64,20 +65,9 @@ public:
 	/// Decompressed: Image data is decompressed and ready for processing.
 	/// </summary>
 	enum class CompressionStatus {
-		UNLOADED, // Image data is not compressed
-		COMPRESSED, // Image data is compressed
-		DECOMPRESSED, // Image data is decompressed and ready for processing
-	};
-
-	/// <summary>
-	/// RAII class to handle automatic acquire and release of resource when running out of scope
-	/// </summary>
-	struct ImageAccess {
-		~ImageAccess();
-	public:
-		const ImageEntry& source;
-		void Release();
-		ImageAccess(ImageEntry& entrySource);
+		NOT_LOADED,
+		COMPRESSED,
+		DECOMPRESSED,
 	};
 
 	/// <summary>
@@ -94,27 +84,19 @@ public:
 	/// <returns></returns>
 	std::span<const PixelRGBA> ReadImageData() const;
 
-
-	/// <summary>
-	/// WIP
-	/// Returns a vector of a span of a rectangular region of the image
-	/// </summary>
-	/// <returns></returns>
-	ImageAccess ReadSpan(int tlx, int tly, int brx, int bry) const;
-
 	/// <summary>
 	/// Check if the pixel is a valid coordinate
 	/// </summary>
 	/// <param name="x"></param>
 	/// <param name="y"></param>
 	/// <returns></returns>
-	bool CheckBound(int x, int y) const;
+	bool CheckBound(size_t x, size_t y) const;
 
 	/// <summary>
 	/// Writes image data
 	/// </summary>
 	/// <returns></returns>
-	int WriteSpan(int tlx, int tly, std::vector<std::span<PixelRGBA>> src);
+	int WriteSpan(size_t tlx, size_t tly, std::vector<std::span<PixelRGBA>> src);
 
 
 	/// <summary>
@@ -149,51 +131,21 @@ public:
 	/// <returns>Returns 0 on success, -1 if the coordinates are out of bounds, or -2 if the image is not fully loaded or decompressed.</returns>
 	int SetPixel(int x, int y, const PixelRGBA& p);
 
-	/// <summary>
-	/// 
-	/// </summary>
-	/// <returns>Texture ID of the image if loaded</returns>
-	unsigned int GetTextureID() const;
-
 
 	/// <summary>
 	/// Load image data from the file path into memory.
 	/// </summary>
 	/// <returns>0 for success, -1 for error loading image, -2 if image is in use (for whatever reason)</returns>
-	int LoadImage(); // Load the image data from the file path into memory
-
-
-	/// <summary>
-	/// Load the image into an opengl texture
-	/// </summary>
-	/// <returns></returns>
-	int LoadTexture();
-
+	int LoadImage();
 
 	/// <summary>
 	/// Releases or unloads the currently loaded image from memory.
 	/// </summary>
 	/// <returns>true if the image was successfully unloaded; false otherwise.</returns>
-	int UnloadImage(); // Unload the image data from memory
+	int UnloadImage();
 
-
-	/// <summary>
-	/// Unload texture from opengl
-	/// </summary>
-	/// <returns></returns>
-	int UnloadTexture();
-
-	/// <summary>
-	/// Attempts to compress image data.
-	/// </summary>
-	/// <returns>true if the image data was successfully compressed; false otherwise.</returns>
-	int CompressImageData(); // Compress the image data to save memory
-
-	/// <summary>
-	/// Decompresses the image data for processing.
-	/// </summary>
-	/// <returns>true if the image was successfully decompressed; false otherwise.</returns>
-	int DecompressImageData(); // Decompress the image data for processing
+	int CompressImageData();
+	int DecompressImageData();
 
 
 	//<--Thread-safety functions to manage the use count of the image entry-->
@@ -201,13 +153,14 @@ public:
 	/// <summary>
 	/// Acquires the image for read. No locking.
 	/// </summary>
-	ImageAccess AcquireRead() const;
-
+	std::shared_ptr<ImageEntry> AcquireRead() const;
 
 	//Get status of image
-	bool IsLoaded() const; // Check if the image is loaded
-	bool IsDecompressed() const; // Check if the image is decompressed
-	bool IsFree() const; // Check if the image is free (not in use)
+	bool IsLoaded() const;
+	bool IsDecompressed() const;
+
+	//No one else holds the shared_ptr
+	bool IsFree() const;
 
 
 	//<--Getters for metadata-->
@@ -221,7 +174,7 @@ public:
 	///WIP will allow later when processing the same image twice is allowed
 
 	//Disallow copy
-	ImageEntry(const ImageEntry&) = delete;
+	ImageEntry(ImageEntry&) = delete;
 	ImageEntry& operator =(const ImageEntry&) = delete;
 
 	//disallow move
@@ -232,15 +185,29 @@ public:
 	// Additional methods for processing or accessing image data can be added here
 };
 
+class ImageRenderer {
+public:
+	ImageRenderer(std::shared_ptr<ImageEntry> Image);
 
+	void LoadGPU();
+	void UnloadGPU();
 
-struct ImageManager {
-	//WIP
+	int DisplayImage();
 
-	std::vector<ImageEntry*> imageEntries;
+private:
+	
+	unsigned int width;
+	unsigned int height;
+
+	const std::shared_ptr<ImageEntry> source;
+	bool textureLoaded;
+	unsigned int textureID;
+};
+
+class ImageManager {
 
 public:
-	int GetImageCount();
+	size_t GetImageCount();
 
 	int ImportFromFile(std::string path);
 	int LazyLoadImage(int index);
@@ -248,14 +215,19 @@ public:
 	void Compress(int index);
 	void Decompress(int index);
 
-	void LoadGPU(int index);
-	void UnloadGPU(int index);
+	std::shared_ptr<ImageRenderer>	CreateRenderer(int index);
+	std::shared_ptr<ImageRenderer> GetRenderer(int index);
+	std::shared_ptr<ImageRenderer> GetRenderer(std::shared_ptr<ImageEntry> imageEntry);
+	void DestroyRenderer(int index);
 
+	std::shared_ptr<ImageEntry> GetImage(int id);
 
-	void DisplayImage(int index);
-
-	ImageEntry::ImageAccess ReadImage(int id);
 	std::string GetName(int id) const;
 	ImVec2 GetDim(int id) const;
+private:
+	//WIP
+
+	std::vector<std::shared_ptr<ImageEntry>> imageEntries;
+	std::unordered_map<std::shared_ptr<ImageEntry>, std::shared_ptr<ImageRenderer>> imageRenderers;
 
 };

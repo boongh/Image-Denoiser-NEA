@@ -11,17 +11,7 @@
 #include <cassert>
 #include <span>
 
-//<---Image access token class implementation--->
-
-//Manual release source
-void ImageEntry::ImageAccess::Release() { delete(this); }
-
-//Acquire source at initialization
-ImageEntry::ImageAccess::ImageAccess(ImageEntry& entrySource) : source(entrySource) { source.useCount.fetch_add(1, std::memory_order_acquire); }
-
-//Release source by end of life
-ImageEntry::ImageAccess::~ImageAccess() { source.useCount.fetch_sub(1, std::memory_order_release); }
-
+//<---Image Entry class Implementation--->
 
 /// <summary>
 /// Initialization of an entry
@@ -29,8 +19,8 @@ ImageEntry::ImageAccess::~ImageAccess() { source.useCount.fetch_sub(1, std::memo
 /// </summary>
 /// <param name="filePath"></param>
 ImageEntry::ImageEntry(const std::string& filePath)
-	: path(filePath), width(0), height(0), channels(0), TextureLoaded(false), textureID(0),
-	status(CompressionStatus::UNLOADED) {
+	: path(filePath), width(0), height(0), channels(0),
+	status(CompressionStatus::NOT_LOADED) {
 }
 
 std::span<const PixelRGBA> ImageEntry::ReadImageData() const {
@@ -39,35 +29,38 @@ std::span<const PixelRGBA> ImageEntry::ReadImageData() const {
 
 ///< !-- - ImageEntry Class--->
 
-bool ImageEntry::CheckBound(int x, int y) const {
+bool ImageEntry::CheckBound(size_t x, size_t y) const {
 	return (x >= 0 && x < width && y >= 0 && y < height);
 }
 
-int ImageEntry::WriteSpan(int tlx, int tly, std::vector<std::span<PixelRGBA>> src) {
-	std::lock_guard lock(lockstate);
+int ImageEntry::WriteSpan(size_t tlx, size_t tly, std::vector<std::span<PixelRGBA>> src) {
+	
+	auto lock = std::unique_lock(lockstate);
+    if (!IsDecompressed()) return -2;
 
+	size_t widthsrc = src[0].size();
+	size_t heightsrc = src.size();
+
+	if (widthsrc == 0 || heightsrc == 0) return -1;
+	
+	if (!CheckBound(tlx, tly) || !CheckBound(tlx + widthsrc - 1, tly + heightsrc - 1)) return -1;
+	
 	//Check input coherence, all span in the vector must be the same length to form a rectangle
-	int widthsrc = src[0].size();
 	for (auto s : src) {
 		if (s.size() != widthsrc) return -1;
 		widthsrc = s.size();
 	}
-	int heightsrc = src.size();
 
-
-	//Check if the writing region is valid
-    if (!IsFree() || !IsDecompressed()) return -1;
-	if (!CheckBound(tlx, tly) || !CheckBound(tlx + widthsrc, tly + heightsrc)) return -1;
 
 	//memcpy each span onto the bitmap data
 	for (int j = 0; j < height; ++j) {
-		std::memcpy(imageData.data.data() + tlx + (tly + j) * width, src[j].data(), width * sizeof(PixelRGBA));
+		std::memcpy(imageData.data.data() + tlx + (tly + j) * width, src[j].data(), src[j].size() * sizeof(PixelRGBA));
 	}
+	return 0;
 }
 
 int ImageEntry::SetPixel(int x, int y, int r, int g, int b, int a){
-	std::lock_guard lock(lockstate);
-	AcquireRead();
+	std::unique_lock lock(lockstate);
 
 	try {
 
@@ -75,12 +68,11 @@ int ImageEntry::SetPixel(int x, int y, int r, int g, int b, int a){
 			return -1; // Out of bounds
 		} else if(!IsDecompressed()) {
 			return -2; // Image not fully in memory
-		}
+		} else if (!IsFree()) return -2;
 
 		imageData[(y * width + x)] = PixelRGBA(r, g, b, a);
 	}
 	catch (std::exception e) {
-		ReleaseRead();
 		return -1;
 	}
 	return 0; // Success
@@ -88,18 +80,17 @@ int ImageEntry::SetPixel(int x, int y, int r, int g, int b, int a){
 
 
 int ImageEntry::GetPixel(int x, int y, PixelRGBA& p) const {
+	std::shared_lock lock(lockstate);
 	assert(IsDecompressed());
 
-	//WIP
+	p = imageData.data[x + width * y];
 
 	return 0;
 }
 
 
 int ImageEntry::SetPixel(int x, int y, const PixelRGBA& p) {
-	std::lock_guard lock(lockstate);
-	AcquireRead();
-
+	std::unique_lock lock(lockstate);
 	try {
 
 		if (CheckBound(x, y)) {
@@ -108,19 +99,12 @@ int ImageEntry::SetPixel(int x, int y, const PixelRGBA& p) {
 		else if (!IsDecompressed()) {
 			return -2; // Image not fully in memory
 		}
-
 		imageData[(y * width + x)] = p;
 	}
 	catch (std::exception e) {
-		ReleaseRead();
 		return -1;
 	}
 	return 0; // Success
-}
-
-unsigned int ImageEntry::GetTextureID() const {
-	ImageAccess a = AcquireRead();
-	return textureID;
 }
 
 
@@ -128,11 +112,9 @@ unsigned int ImageEntry::GetTextureID() const {
 /// Currently can only load 8bit image due to limitation of the FileReader Library
 int ImageEntry::LoadImage() {
 
-	std::lock_guard<std::mutex> lock(lockstate); // Ensure thread safety
+	std::unique_lock lock(lockstate);
 
-	// Check if the image is already loaded or in use, then loading again should not be allowed
 	if (IsLoaded()) return 0; // Already loaded
-	if (useCount > 0) return -2; // Image is already in use, cannot load
 
 	try {
 		FileReader::ReadImage(path, imageData);
@@ -148,23 +130,19 @@ int ImageEntry::LoadImage() {
 		return -1; // Error loading image
 	}
 }
-
-int ImageEntry::LoadTexture() {
-	ImageAccess access = AcquireRead();
-	if (TextureLoaded) return -2; //Image already loaded
-	LoadImage_s(textureID, imageData.data.data(), width, height, channels);
-	TextureLoaded = true;
-	return 0;
-}
-
 int ImageEntry::UnloadImage() {
-	std::lock_guard lock(lockstate);
+	std::unique_lock lock(lockstate);
 
 	if (!IsFree()) return -2; //Image is still in use
 
-	status = CompressionStatus::UNLOADED;
+	status = CompressionStatus::NOT_LOADED;
+
 	imageData.Clear();
+	std::vector<PixelRGBA>().swap(imageData.data);
+
 	imageDataCompressed.clear();
+	std::vector<uint8_t>().swap(imageDataCompressed);
+
 	width = 0;
 	height = 0;
 	channels = 0;
@@ -172,77 +150,52 @@ int ImageEntry::UnloadImage() {
 	return 0;
 }
 
-int ImageEntry::UnloadTexture() {
-	if (!TextureLoaded) return -2; // Texture not currently loaded
-	UnloadImage_s(textureID);
-	TextureLoaded = false;
-	return 0;
-}
 
 int ImageEntry::CompressImageData() {
-	std::lock_guard lock(lockstate);
-	if (!IsFree()) return -2;
-
+	std::unique_lock lock(lockstate);
+	if (status != CompressionStatus::DECOMPRESSED) return -2;
 
 	QOICompress(std::span<uint8_t>(reinterpret_cast<uint8_t*>(imageData.data.data()), width * height * sizeof(PixelRGBA)), imageDataCompressed, width, height, channels);
 
 	status = CompressionStatus::COMPRESSED;
-	//Clear uncompressed image
 	imageData.Clear();
+	std::vector<PixelRGBA>().swap(imageData.data);
 
-	return -1;
+	return 0;
 }
 
 int ImageEntry::DecompressImageData() {
-	std::lock_guard lock(lockstate);
-	if (!IsFree()) return -2;
+	std::unique_lock lock(lockstate);
+	if (status != CompressionStatus::COMPRESSED) return -2;
 
 	QOIDecompress(std::span<uint8_t>(imageDataCompressed.data(), imageDataCompressed.size()), imageData.data, width, height);
 
 	status = CompressionStatus::DECOMPRESSED;
-	//Clear compressed image
 	imageDataCompressed.clear();
+	std::vector<uint8_t>().swap(imageDataCompressed);
 
-	return -1;
+	return 0;
 }
 
-
-
-ImageEntry::ImageAccess ImageEntry::AcquireRead() const { // Increment the use count when the image is being used
-	assert(IsDecompressed());
-	useCount.fetch_add(1, std::memory_order_acquire);
-
-	// The ImageAccess constructor requires a non-const reference to ImageEntry.
-	// But this method is const, so we need to cast away constness.
-	// This is safe here because ImageAccess only reads data and manages useCount.
-	
-	return ImageAccess(const_cast<ImageEntry&>(*this));
+std::shared_ptr<ImageEntry> ImageEntry::AcquireRead() const {  
+    assert(IsDecompressed());  
+    return std::const_pointer_cast<ImageEntry>(shared_from_this());  
 }
 
-// Decrement the use count when the image is no longer being used 
-void ImageEntry::ReleaseRead() const { useCount.fetch_sub(1, std::memory_order_release); }
-
-// Check if the image is loaded
-bool ImageEntry::IsLoaded() const { return status != CompressionStatus::UNLOADED; }
-
-// Check if the image is decompressed
+bool ImageEntry::IsLoaded() const { return status != CompressionStatus::NOT_LOADED; }
 bool ImageEntry::IsDecompressed() const { return status == CompressionStatus::DECOMPRESSED; }
-
-//Check if the image has no-one reading
-bool ImageEntry::IsFree() const { return useCount.load() == 0; }
-
-//Get file path of the image
+bool ImageEntry::IsFree() const { return shared_from_this().use_count() == 1; }
 std::string ImageEntry::GetFilePath() const { return path; }
-
-//Getters for metadata
 int ImageEntry::GetWidth() const { return width; }
 int ImageEntry::GetHeight() const { return height; }
 int ImageEntry::GetChannels() const { return channels; }
 
-int ImageManager::GetImageCount() { return imageEntries.size(); }
+//<---Image Manager class implementation--->
+
+size_t ImageManager::GetImageCount() { return imageEntries.size(); }
 
 int ImageManager::ImportFromFile(std::string path) {
-	ImageEntry* newImage = new ImageEntry(path);
+	auto newImage = std::make_shared<ImageEntry>(path);
 	imageEntries.push_back(newImage);
 	return 0;
 }
@@ -253,24 +206,62 @@ int ImageManager::LazyLoadImage(int index) {
 }
 
 void ImageManager::Compress(int index) { imageEntries[index]->CompressImageData(); }
-
 void ImageManager::Decompress(int index) { imageEntries[index]->DecompressImageData(); }
 
-void ImageManager::LoadGPU(int index) { imageEntries[index]->LoadTexture(); }
-
-void ImageManager::UnloadGPU(int index) { imageEntries[index]->UnloadTexture(); }
-
-void ImageManager::DisplayImage(int index) {
-	ImageEntry* entry = imageEntries[index];
-	if (entry->TextureLoaded) LoadImageTooltipWidget(entry->GetTextureID(), ImVec2(entry->width, entry->height), ImVec2(64, 64), ImVec4(0, 0, 0, 0), 4);
+std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(int index) {
+    auto entry = imageEntries[index];
+    auto renderer = std::make_shared<ImageRenderer>(entry);
+    imageRenderers.insert({ entry, renderer });
+	return renderer;
 }
 
-ImageEntry::ImageAccess ImageManager::ReadImage(int id) { return imageEntries[id]->AcquireRead(); }
+std::shared_ptr<ImageRenderer> ImageManager::GetRenderer(int index) {
+	if (index >= 0 && index < imageEntries.size()) {
+		auto rval = imageRenderers.find(imageEntries[index]);
+		if (rval == imageRenderers.end()) return nullptr;
+		return rval->second;
+	}
+	return nullptr;
+}
 
+std::shared_ptr<ImageRenderer> ImageManager::GetRenderer(std::shared_ptr<ImageEntry> imageEntry) {
+	auto rval = imageRenderers.find(imageEntry);
+	if (rval == imageRenderers.end()) return nullptr;
+	return rval->second;
+}
+
+void ImageManager::DestroyRenderer(int index) { 
+	imageRenderers.erase(imageEntries[index]);
+}
+
+std::shared_ptr<ImageEntry> ImageManager::GetImage(int id) { return imageEntries[id]->AcquireRead(); }
 std::string ImageManager::GetName(int id) const { return imageEntries[id]->GetFilePath(); }
 
-ImVec2 ImageManager::GetDim(int id) const
-{
-	ImageEntry* image = imageEntries[id];
-	return ImVec2(image->GetWidth(), image->GetHeight());
+ImVec2 ImageManager::GetDim(int id) const {
+	auto image = imageEntries[id];
+	return ImVec2(static_cast<float>(image->GetWidth()), static_cast<float>(image->GetHeight()));
 }
+
+ImageRenderer::ImageRenderer(std::shared_ptr<ImageEntry> Image) : source(Image), textureID(0), textureLoaded(false), width(0), height(0){};
+
+void ImageRenderer::LoadGPU() { 
+	width = source->GetWidth();
+	height = source->GetHeight();
+	LoadImage_s(textureID, reinterpret_cast<void*>(const_cast<PixelRGBA*>(source->ReadImageData().data())), width, height, source->GetChannels()); 
+	textureLoaded = true;
+}
+
+void ImageRenderer::UnloadGPU() { 
+	width = 0;
+	height = 0;
+	UnloadImage_s(textureID);
+	textureLoaded = false;
+}
+
+int ImageRenderer::DisplayImage() {
+	if (textureLoaded) {
+		LoadImageTooltipWidget(textureID, ImVec2(static_cast<float>(width), static_cast<float>(height)), ImVec2(64, 64), ImVec4(0, 0, 0, 0), 4);
+		return 0;
+	} else return -1;
+}
+
