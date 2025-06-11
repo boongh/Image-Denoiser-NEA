@@ -113,6 +113,7 @@ int Application::InitWindow(GLFWwindow*& windowRet) {
     EMSCRIPTEN_MAINLOOP_BEGIN
 #else
 #endif
+    return 0;
 }
 
 void Application::BuildDockLayout() {
@@ -287,7 +288,6 @@ int Application::Run() {
 #ifdef __EMSCRIPTEN__
     EMSCRIPTEN_MAINLOOP_END;
 #endif
-
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
