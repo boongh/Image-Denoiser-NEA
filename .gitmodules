@@ -1,12 +1,6 @@
 [submodule "dependencies/FileReader"]
 	path = dependencies/FileReader
 	url = https://github.com/boongh/FileReader.git
-[submodule "dependencies/MultiFFT"]
-	path = dependencies/MultiFFT
-	url = https://github.com/boongh/MultiFFT.git
-[submodule "Dependencies/multiFFT"]
-	path = Dependencies/multiFFT
-	url = https://github.com/boongh/MultiFFT.git
 [submodule "dependencies/stb"]
 	path = dependencies/stb
 	url = https://github.com/nothings/stb.git
@@ -21,9 +15,9 @@
 [submodule "Dependencies/FileReader"]
 	path = Dependencies/FileReader
 	url = https://github.com/boongh/FileReader.git
-[submodule "Dependencies/MultiFFT"]
-	path = Dependencies/MultiFFT
-	url = https://github.com/boongh/MultiFFT.git
 [submodule "Dependencies/stb"]
 	path = Dependencies/stb
 	url = https://github.com/nothings/stb.git
+[submodule "Dependencies/MultiFFT"]
+	path = Dependencies/MultiFFT
+	url = https://github.com/boongh/MultiFFT.git
