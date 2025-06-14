@@ -151,7 +151,6 @@
     <ClCompile Include="Dependencies\FileReader\src\Reader\PPMReader.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Reader\QOIReader.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Reader\WAVReader.cpp" />
-    <ClCompile Include="Dependencies\FileReader\src\Test.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp" />

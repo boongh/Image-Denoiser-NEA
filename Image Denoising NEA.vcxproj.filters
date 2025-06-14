@@ -87,9 +87,6 @@
     <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Dependencies\FileReader\src\Test.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Dependencies\FileReader\src\Reader\ImageReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>

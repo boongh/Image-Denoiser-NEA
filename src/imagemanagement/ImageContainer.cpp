@@ -1,17 +1,34 @@
 #pragma once
 
-///Implementation of ImageContainer.h
-#include <FileReader.h>
-#include <QOIFormat.h>
-#include "ImageContainer.h"
+#pragma region Includes
+
 #include <ImGuiimageloader.h>
 #include <CustomWidget.h>
 #include <imgui.h>
+
 #include <fstream>
 #include <cassert>
+
+#include <FileReader.h>
+#include <QOIFormat.h>
+#include "ImageContainer.h"
+
+#ifndef  STB_IMAGE_IMPLEMENTATION 
+#include <stb_image.h>
+#define  STB_IMAGE_IMPLEMENTATION 
+#endif // ! STB_IMAGE_IMPLEMENTATION 
+
 #include <span>
 
+
+#pragma endregion
+
+
+///Implementation of ImageContainer.h
+
 //<---Image Entry class Implementation--->
+#pragma region Image Entry
+
 
 /// <summary>
 /// Initialization of an entry
@@ -34,17 +51,17 @@ bool ImageEntry::CheckBound(size_t x, size_t y) const {
 }
 
 int ImageEntry::WriteSpan(size_t tlx, size_t tly, std::vector<std::span<PixelRGBA>> src) {
-	
+
 	auto lock = std::unique_lock(lockstate);
-    if (!IsDecompressed()) return -2;
+	if (!IsDecompressed()) return -2;
 
 	size_t widthsrc = src[0].size();
 	size_t heightsrc = src.size();
 
 	if (widthsrc == 0 || heightsrc == 0) return -1;
-	
+
 	if (!CheckBound(tlx, tly) || !CheckBound(tlx + widthsrc - 1, tly + heightsrc - 1)) return -1;
-	
+
 	//Check input coherence, all span in the vector must be the same length to form a rectangle
 	for (auto s : src) {
 		if (s.size() != widthsrc) return -1;
@@ -59,16 +76,18 @@ int ImageEntry::WriteSpan(size_t tlx, size_t tly, std::vector<std::span<PixelRGB
 	return 0;
 }
 
-int ImageEntry::SetPixel(int x, int y, int r, int g, int b, int a){
+int ImageEntry::SetPixel(int x, int y, int r, int g, int b, int a) {
 	std::unique_lock lock(lockstate);
 
 	try {
 
 		if (CheckBound(x, y)) {
 			return -1; // Out of bounds
-		} else if(!IsDecompressed()) {
+		}
+		else if (!IsDecompressed()) {
 			return -2; // Image not fully in memory
-		} else if (!IsFree()) return -2;
+		}
+		else if (!IsFree()) return -2;
 
 		imageData[(y * width + x)] = PixelRGBA(r, g, b, a);
 	}
@@ -126,7 +145,8 @@ int ImageEntry::LoadImage() {
 		status = CompressionStatus::DECOMPRESSED; // Set the status to loaded
 		return 0; // Success
 
-	} catch (const std::exception&) {
+	}
+	catch (const std::exception&) {
 		return -1; // Error loading image
 	}
 }
@@ -177,9 +197,18 @@ int ImageEntry::DecompressImageData() {
 	return 0;
 }
 
-std::shared_ptr<ImageEntry> ImageEntry::AcquireRead() const {  
-    assert(IsDecompressed());  
-    return std::const_pointer_cast<ImageEntry>(shared_from_this());  
+
+
+#pragma endregion
+
+
+
+#pragma region Image Manager
+
+
+std::shared_ptr<ImageEntry> ImageEntry::AcquireRead() const {
+	assert(IsDecompressed());
+	return std::const_pointer_cast<ImageEntry>(shared_from_this());
 }
 
 bool ImageEntry::IsLoaded() const { return status != CompressionStatus::NOT_LOADED; }
@@ -209,9 +238,9 @@ void ImageManager::Compress(int index) { imageEntries[index]->CompressImageData(
 void ImageManager::Decompress(int index) { imageEntries[index]->DecompressImageData(); }
 
 std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(int index) {
-    auto entry = imageEntries[index];
-    auto renderer = std::make_shared<ImageRenderer>(entry);
-    imageRenderers.insert({ entry, renderer });
+	auto entry = imageEntries[index];
+	auto renderer = std::make_shared<ImageRenderer>(entry);
+	imageRenderers.insert({ entry, renderer });
 	return renderer;
 }
 
@@ -230,7 +259,7 @@ std::shared_ptr<ImageRenderer> ImageManager::GetRenderer(std::shared_ptr<ImageEn
 	return rval->second;
 }
 
-void ImageManager::DestroyRenderer(int index) { 
+void ImageManager::DestroyRenderer(int index) {
 	imageRenderers.erase(imageEntries[index]);
 }
 
@@ -242,16 +271,21 @@ ImVec2 ImageManager::GetDim(int id) const {
 	return ImVec2(static_cast<float>(image->GetWidth()), static_cast<float>(image->GetHeight()));
 }
 
-ImageRenderer::ImageRenderer(std::shared_ptr<ImageEntry> Image) : source(Image), textureID(0), textureLoaded(false), width(0), height(0){};
+#pragma endregion
 
-void ImageRenderer::LoadGPU() { 
+
+#pragma region Image Renderer
+
+ImageRenderer::ImageRenderer(std::shared_ptr<ImageEntry> Image) : source(Image), textureID(0), textureLoaded(false), width(0), height(0) {};
+
+void ImageRenderer::LoadGPU() {
 	width = source->GetWidth();
 	height = source->GetHeight();
-	LoadImage_s(textureID, reinterpret_cast<void*>(const_cast<PixelRGBA*>(source->ReadImageData().data())), width, height, source->GetChannels()); 
+	LoadImage_s(textureID, reinterpret_cast<void*>(const_cast<PixelRGBA*>(source->ReadImageData().data())), width, height, source->GetChannels());
 	textureLoaded = true;
 }
 
-void ImageRenderer::UnloadGPU() { 
+void ImageRenderer::UnloadGPU() {
 	width = 0;
 	height = 0;
 	UnloadImage_s(textureID);
@@ -262,6 +296,9 @@ int ImageRenderer::DisplayImage() {
 	if (textureLoaded) {
 		LoadImageTooltipWidget(textureID, ImVec2(static_cast<float>(width), static_cast<float>(height)), ImVec2(64, 64), ImVec4(0, 0, 0, 0), 4);
 		return 0;
-	} else return -1;
+	}
+	else return -1;
 }
+
+#pragma endregion
 

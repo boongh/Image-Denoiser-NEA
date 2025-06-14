@@ -44,15 +44,18 @@
 class Application {
 public:
     Application(ImVec4 backgroundColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f));
-    static void glfw_error_callback(int error, const char* description);
-
-    int InitWindow(GLFWwindow*& windowRet);
-
-    void BuildDockLayout();
-
     int Run();
 
+    void ImportFiles(std::span<std::string> paths);
 private:
+
+    int InitWindow(GLFWwindow*& windowRet);
+    static void glfw_error_callback(int error, const char* description);
+    void BuildDockLayout();
+    int OpenImages(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
+
+    void DisplayMenu();
+
     ImVec4 clearColor;
     ImGuiID g_viewport_id;
 
@@ -69,4 +72,6 @@ private:
     ImageManager Manager;
 
     int selection = -1;
+
+    std::vector<char*> formatfilter;
 };

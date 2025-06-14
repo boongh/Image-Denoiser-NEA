@@ -1,6 +1,8 @@
 #include "Application.h"
 
-Application::Application(ImVec4 backgroundColor) {
+Application::Application(ImVec4 backgroundColor) : g_DebugView(false), g_ImageListView(true), g_ImagePreview(true), g_docklefttemp(false), g_viewport_id(0){
+    //Default format filter
+
     clearColor = backgroundColor;
     return;
 }
@@ -136,33 +138,56 @@ void Application::BuildDockLayout() {
 #endif
 }
 
-int Application::Run() {
-    static const char* formatfilter[] = { "*.jpg", "*.png", "*.qoi" };
-
-    GLFWwindow* window;
-    InitWindow(window);
-
+int Application::OpenImages(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths) {
     // Load image with 4 channels
-    const char* file = OpenFileDialogue("Select an Image", formatfilter, 3);
-
-    std::vector<std::string> paths;
+    const char* file = OpenFileDialogue("Select an Image", formatfilter, filtercount);
     SplitPaths(normalizePath(file), paths); // Split the file path into components if needed
 
     for (int i = 0; i < paths.size(); i++) {
         std::cout << paths[i] << std::endl;
     }
-
     std::cout << paths.size() << " files selected." << std::endl;
+    return 0;
+}
 
-    //if (!FileReader::ReadImage(normalizePath(file), imageSource)) {
-    //	std::cout << "Failed to read image file: " << stbi_failure_reason() << normalizePath(file) << std::endl;
-    //}
+
+
+void Application::DisplayMenu() {
+
+    //Format filter
+    static const char* formatfilter[] = {
+        "*.jpg", 
+        "*.png", 
+        "*.qoi",
+    };
+
+    if (ImGui::BeginMenuBar())
+    {
+        if (ImGui::BeginMenu("File"))
+        {
+            if (ImGui::MenuItem("Open file")) {
+                std::vector<std::string> paths;
+                OpenImages(formatfilter, 3, paths);
+                ImportFiles(paths);
+            }
+
+            if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {} // Disabled item
+            ImGui::Separator();
+            if (ImGui::MenuItem("Cut", "CTRL+X")) {}
+            if (ImGui::MenuItem("Copy", "CTRL+C")) {}
+            if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+            ImGui::EndMenu();
+        }
+        ImGui::EndMenuBar();
+    }
+}
+
+int Application::Run() {
+
+    GLFWwindow* window;
+    InitWindow(window);
 
     ImGuiID g_viewport_id = ImGui::GetMainViewport()->ID;
-
-    for (auto path : paths) {
-        Manager.ImportFromFile(path);
-    }
 
     while (!glfwWindowShouldClose(window))
     {
@@ -191,31 +216,15 @@ int Application::Run() {
 
         ImGuiIO& io = ImGui::GetIO();
 
-        // Below we are displaying the font texture because it is the only texture we have access to inside the demo!
-        // Remember that ImTextureID is just storage for whatever you want it to be. It is essentially a value that
-        // will be passed to the rendering backend via the ImDrawCmd structure.
-        // If you use one of the default imgui_impl_XXXX.cpp rendering backend, they all have comments at the top
-        // of their respective source file to specify what they expect to be stored in ImTextureID, for example:
-        // - The imgui_impl_dx11.cpp renderer expect a 'ID3D11ShaderResourceView*' pointer
-        // - The imgui_impl_opengl3.cpp renderer expect a GLuint OpenGL texture identifier, etc.
-        // More:
-        // - If you decided that ImTextureID = MyEngineTexture*, then you can pass your MyEngineTexture* pointers
-        //   to ImGui::Image(), and gather width/height through your own functions, etc.
-        // - You can use ShowMetricsWindow() to inspect the draw data that are being passed to your renderer,
-        //   it will help you debug issues if you are confused about it.
-        // - Consider using the lower-level ImDrawList::AddImage() API, via ImGui::GetWindowDrawList()->AddImage().
-        // - Read https://github.com/ocornut/imgui/blob/master/docs/FAQ.md
-        // - Read https://github.com/ocornut/imgui/wiki/Image-Loading-and-Displaying-Examples
-
-        // We can also get the ID of a specific ImGui::Begin() window
-        // if we want to dock within that window. For fullscreen docking,
-        // we use the main viewport ID.
-
         {
-            ImGui::Begin("ImageListView");
+            bool t = true;
+            ImGui::Begin("ImageListView", &t, ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoBackground);
+
+            DisplayMenu();
+
             ImGui::PushStyleVar(ImGuiStyleVar_ImageBorderSize, std::max(1.0f, ImGui::GetStyle().ImageBorderSize));
 
-            ImGui::BeginChild("Image list", ImVec2(320, 540));
+            ImGui::BeginChild("Image list", ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX | ImGuiChildFlags_ResizeY);
             ImVec2 pos = ImGui::GetCursorScreenPos();
 
             //if (ImGui::Checkbox("Use memory compression", &g_useCompress)) {
@@ -245,6 +254,7 @@ int Application::Run() {
                     Manager.GetRenderer(selection)->LoadGPU();
                 }
             }
+
             ImGui::EndChild();
             
             ImGui::SameLine(0.0f, 1.0f);
@@ -298,6 +308,10 @@ int Application::Run() {
     glfwTerminate();
 
     return 0;
+}
+
+void Application::ImportFiles(std::span<std::string> paths) {
+    for (auto path : paths) Manager.ImportFromFile(path);
 }
 
 
