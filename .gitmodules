@@ -21,3 +21,6 @@
 [submodule "Dependencies/MultiFFT"]
 	path = Dependencies/MultiFFT
 	url = https://github.com/boongh/MultiFFT.git
+[submodule "testdata/cbsd68"]
+	path = testdata/cbsd68
+	url = https://github.com/clausmichele/CBSD68-dataset.git
