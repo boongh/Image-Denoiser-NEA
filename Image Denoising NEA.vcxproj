@@ -166,10 +166,10 @@
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp" />
     <ClCompile Include="Dependencies\tinyfiledialogs\tinyfiledialogs.c" />
-    <ClCompile Include="src\ImageContainer.cpp" />
-    <ClCompile Include="src\CustomWidget.cpp" />
-    <ClCompile Include="src\ImageContainers.cpp" />
-    <ClCompile Include="src\ImGuiimageloaderOpenGL.cpp" />
+    <ClCompile Include="src\imagemanagement\ImageContainer.cpp" />
+    <ClCompile Include="src\imguicustom\CustomWidget.cpp" />
+    <ClCompile Include="src\imagemanagement\ImageContainers.cpp" />
+    <ClCompile Include="src\imguicustom\ImGuiimageloaderOpenGL.cpp" />
     <ClCompile Include="src\main.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -199,6 +199,7 @@
     <ClInclude Include="Dependencies\MultiFFT\include\SignalGenerator.h" />
     <ClInclude Include="Dependencies\tinyfiledialogs\tinyfiledialogs.h" />
     <ClInclude Include="include\CustomWidget.h" />
+    <ClInclude Include="include\denoiser.h" />
     <ClInclude Include="include\ImageContainer.h" />
     <ClInclude Include="include\ImGuiimageloader.h" />
   </ItemGroup>

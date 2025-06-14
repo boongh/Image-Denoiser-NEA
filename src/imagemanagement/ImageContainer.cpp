@@ -40,6 +40,19 @@ ImageEntry::ImageEntry(const std::string& filePath)
 	status(CompressionStatus::NOT_LOADED) {
 }
 
+ImageEntry::ImageEntry(std::span<PixelRGBA> src, unsigned int w, unsigned int h, std::string name) {
+	status = CompressionStatus::DECOMPRESSED;
+	if (src.size() < w * h) return;
+	this->width = w;
+	this->height = h;
+	this->channels = 4;
+	path = name;
+	imageData = RGBAImageI();
+	imageData.Resize(w, h, 4);
+	std::memcpy(imageData.data.data(), src.data(), w * h * sizeof(PixelRGBA));
+}
+
+
 std::span<const PixelRGBA> ImageEntry::ReadImageData() const {
 	return std::span<const PixelRGBA>(imageData.data.data(), imageData.data.size());
 }
@@ -225,6 +238,12 @@ size_t ImageManager::GetImageCount() { return imageEntries.size(); }
 
 int ImageManager::ImportFromFile(std::string path) {
 	auto newImage = std::make_shared<ImageEntry>(path);
+	imageEntries.push_back(newImage);
+	return 0;
+}
+
+int ImageManager::ImportFromSpan(std::span<PixelRGBA> src, unsigned int width, unsigned int height, std::string name) {
+	auto newImage = std::make_shared<ImageEntry>(src, width, height, name);
 	imageEntries.push_back(newImage);
 	return 0;
 }

@@ -1,4 +1,5 @@
 #include "Application.h"
+#include <denoiser.h>
 
 Application::Application(ImVec4 backgroundColor) : g_DebugView(false), g_ImageListView(true), g_ImagePreview(true), g_docklefttemp(false), g_viewport_id(0){
     //Default format filter
@@ -264,7 +265,25 @@ int Application::Run() {
                 if (selection != -1) {
                     ImGui::LabelText("info", "File path: %s", Manager.GetName(selection).c_str());
                     ImVec2 dim = Manager.GetDim(selection);
-                    ImGui::LabelText("Dimension", "%d x %d", dim.x, dim.y);
+                    ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
+                    if (ImGui::Button("Denoise", ImVec2(0, 0))) {
+                        int currentSelection = selection;
+                        ImVec2 currentDim = dim;
+                        std::jthread([this, currentSelection, currentDim]() {
+                            auto image = Manager.GetImage(currentSelection);
+                            if (image) {
+                                std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
+                                    image->ReadImageData(),
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
+                                Manager.ImportFromSpan(
+                                    denoised,
+                                    static_cast<unsigned int>(currentDim.x), 
+                                    static_cast<unsigned int>(currentDim.y), 
+                                    std::string(Manager.GetName(selection) + std::string("copy")));
+                            }
+                        }).detach();
+                    }
                     Manager.GetRenderer(selection)->DisplayImage();
                 }
             }

@@ -51,10 +51,10 @@
     <ClCompile Include="Dependencies\glad\src\glad.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ImGuiimageloaderOpenGL.cpp">
+    <ClCompile Include="src\imguicustom\ImGuiimageloaderOpenGL.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\CustomWidget.cpp">
+    <ClCompile Include="src\imguicustom\CustomWidget.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Dependencies\tinyfiledialogs\tinyfiledialogs.c">
@@ -90,10 +90,10 @@
     <ClCompile Include="Dependencies\FileReader\src\Reader\ImageReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ImageContainers.cpp">
+    <ClCompile Include="src\imagemanagement\ImageContainers.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\ImageContainer.cpp">
+    <ClCompile Include="src\imagemanagement\ImageContainer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Application.cpp">
@@ -183,6 +183,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="include\Application.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\denoiser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

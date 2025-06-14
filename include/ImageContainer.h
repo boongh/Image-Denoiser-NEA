@@ -76,7 +76,7 @@ public:
 	/// </summary>
 	/// <param name="filePath"></param>
 	ImageEntry(const std::string& filePath);
-
+	ImageEntry(std::span<PixelRGBA> src, unsigned int width, unsigned int height, std::string name);
 
 	/// <summary>
 	/// Gets read access to the entire image data
@@ -210,6 +210,8 @@ public:
 	size_t GetImageCount();
 
 	int ImportFromFile(std::string path);
+	int ImportFromSpan(std::span<PixelRGBA> src, unsigned int width, unsigned int height, std::string name);
+
 	int LazyLoadImage(int index);
 
 	void Compress(int index);

@@ -15,38 +15,84 @@ public:
 	/// <param name="width"></param>
 	/// <param name="height"></param>
 	/// <param name="strn"></param>
-	static int SmoothLF(
-		std::span<PixelRGBA> src,
-		std::span<PixelRGBA> dst,
+	static std::vector<PixelRGBA> SmoothLF(std::span<const PixelRGBA> src,
 		unsigned int width,
-		unsigned int height,
-		unsigned int strn
-	) {
+		unsigned int height, unsigned int halfWidth, unsigned int halfHeight, double strn) {
+		std::vector<PixelRGBA> dst = std::vector<PixelRGBA>(src.size());
+		int xPos = 0;
+		int yPos = 0;
 
-		if (src.size() != dst.size()) return -1;
+		unsigned int postemp = 0;
+		unsigned int cum = 0;
 
-		unsigned int xPos = 0;
-		unsigned int yPos = 0;
-
+		PixelRGBA pinit;
 		PixelRGBA pavg;
-		for (int pixelpos = 0; pixelpos < src.size();  ++pixelpos) {
-			PosDecompose(pixelpos, width, height, &xPos, &yPos);
-			pavg
-			for (int x = std::min(xPos, (unsigned int)0); x < std::max(xPos + 2, (unsigned int)width - 1); x++) {
-				for (int y = std::min(yPos, (unsigned int)0); y < std::max(yPos + 2, (unsigned int)height - 1); y++) {
+
+		unsigned int sumR, sumG, sumB;
+
+		try {
+			for (int pixelpos = 0; pixelpos < src.size(); ++pixelpos) {
+				pavg.Clear();
+				PosDecompose(pixelpos, width, height, &xPos, &yPos);
+
+				cum = 0;
+				sumR = sumG = sumB = 0;
+
+				//Window
+				for (unsigned int x = std::max(xPos - (int)halfWidth, 0); x < std::min(xPos + (int)halfWidth, (int)width); x++) {
+					for (unsigned int y = std::max(yPos - (int)halfHeight, 0); y < std::min(yPos + (int)halfHeight, (int)height); y++) {
+						postemp = PosCompose(x, y, width, height);
+						PixelRGBA srcpixel = src[postemp];
+						sumR += srcpixel.r;
+						sumG += srcpixel.g;
+						sumB += srcpixel.b;
+						cum++;
+					}
+				}
+				pinit = src[pixelpos];
+				sumR /= cum; sumG /= cum;  sumB /= cum;
+
+				dst[pixelpos] = PixelRGBA(
+					lerp<uint8_t>(sumR, pinit.r, strn),
+					lerp<uint8_t>(sumG, pinit.g, strn),
+					lerp<uint8_t>(sumB, pinit.b, strn),
+					pinit.a
+				);
+
+				if (pixelpos % 10000 == 0) {
+					printf("Processing pixel %d : %d\n", pixelpos, static_cast<int>(src.size()));
+					printf("Values are (%d, %d, %d, %d)\n\n", dst[pixelpos].r, dst[pixelpos].g, dst[pixelpos].b, dst[pixelpos].a);
 				}
 			}
+			return dst;
+		}
+		catch (std::exception e) {
+			return dst;
 		}
 	}
-private:
+
 	static void PosDecompose(
 		unsigned int pos,
 		unsigned int width,
 		unsigned int height,
-		unsigned int* xstr,
-		unsigned int* ystr) {
+		int* xstr,
+		int* ystr) {
 
 		*xstr = pos % width;
 		*ystr = pos / height;
+	}
+
+	static unsigned int PosCompose(
+		unsigned int xstr,
+		unsigned int ystr,
+		unsigned int width,
+		unsigned int height
+	) {
+		return xstr + ystr * width;
+	}
+
+	template <typename T>
+	static T lerp(T a, T b, double t) {
+		return static_cast<T>((1 - t) * a + b * t);
 	}
 };
