@@ -39,8 +39,8 @@ public:
 				sumR = sumG = sumB = 0;
 
 				//Window
-				for (unsigned int x = std::max(xPos - (int)halfWidth, 0); x < std::min(xPos + (int)halfWidth, (int)width); x++) {
-					for (unsigned int y = std::max(yPos - (int)halfHeight, 0); y < std::min(yPos + (int)halfHeight, (int)height); y++) {
+				for (unsigned int y = std::max(yPos - (int)halfHeight, 0); y < std::min(yPos + (int)halfHeight, (int)height); y++) {
+					for (unsigned int x = std::max(xPos - (int)halfWidth, 0); x < std::min(xPos + (int)halfWidth, (int)width); x++) {
 						postemp = PosCompose(x, y, width, height);
 						PixelRGBA srcpixel = src[postemp];
 						sumR += srcpixel.r;
@@ -49,6 +49,11 @@ public:
 						cum++;
 					}
 				}
+
+				if (cum == 0) {
+					printf("Latest pixel %d before crash (%d, %d, %d) with count %d", pixelpos, sumR, sumG, sumB, cum);
+				}
+
 				pinit = src[pixelpos];
 				sumR /= cum; sumG /= cum;  sumB /= cum;
 
@@ -58,11 +63,14 @@ public:
 					lerp<uint8_t>(sumB, pinit.b, strn),
 					pinit.a
 				);
-
+				
+#ifdef DEBUG	
 				if (pixelpos % 10000 == 0) {
 					printf("Processing pixel %d : %d\n", pixelpos, static_cast<int>(src.size()));
 					printf("Values are (%d, %d, %d, %d)\n\n", dst[pixelpos].r, dst[pixelpos].g, dst[pixelpos].b, dst[pixelpos].a);
 				}
+#endif // DEBUG
+
 			}
 			return dst;
 		}
@@ -79,10 +87,10 @@ public:
 		int* ystr) {
 
 		*xstr = pos % width;
-		*ystr = pos / height;
+		*ystr = pos / width;
 	}
 
-	static unsigned int PosCompose(
+	static inline unsigned int PosCompose(
 		unsigned int xstr,
 		unsigned int ystr,
 		unsigned int width,
@@ -92,7 +100,7 @@ public:
 	}
 
 	template <typename T>
-	static T lerp(T a, T b, double t) {
+	static inline T lerp(T a, T b, double t) {
 		return static_cast<T>((1 - t) * a + b * t);
 	}
 };

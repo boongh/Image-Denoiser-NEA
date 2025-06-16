@@ -40,13 +40,10 @@ ImageEntry::ImageEntry(const std::string& filePath)
 	status(CompressionStatus::NOT_LOADED) {
 }
 
-ImageEntry::ImageEntry(std::span<PixelRGBA> src, unsigned int w, unsigned int h, std::string name) {
+ImageEntry::ImageEntry(std::span<PixelRGBA> src, unsigned int w, unsigned int h, std::string name) : 
+	width(w), height(h), channels(4), path(name) {
 	status = CompressionStatus::DECOMPRESSED;
 	if (src.size() < w * h) return;
-	this->width = w;
-	this->height = h;
-	this->channels = 4;
-	path = name;
 	imageData = RGBAImageI();
 	imageData.Resize(w, h, 4);
 	std::memcpy(imageData.data.data(), src.data(), w * h * sizeof(PixelRGBA));
@@ -313,7 +310,42 @@ void ImageRenderer::UnloadGPU() {
 
 int ImageRenderer::DisplayImage() {
 	if (textureLoaded) {
-		LoadImageTooltipWidget(textureID, ImVec2(static_cast<float>(width), static_cast<float>(height)), ImVec2(64, 64), ImVec4(0, 0, 0, 0), 4);
+		ImVec2 uv_min = ImVec2(0.0f, 0.0f);
+		ImVec2 uv_max = ImVec2(1.0f, 1.0f);
+		ImGuiIO& io = ImGui::GetIO();
+		ImVec2 pos = ImGui::GetCursorScreenPos();
+
+		ImGui::ImageWithBg(textureID, dimension, uv_min, uv_max, bgColor);
+
+		if (ImGui::BeginItemTooltip())
+		{
+
+			float region_x = io.MousePos.x - pos.x - widgetDim.x * 0.5f; //Top left XY Coordinates of the region
+			float region_y = io.MousePos.y - pos.y - widgetDim.y * 0.5f;
+			float zoom = 8.0f;
+
+			//Clamp the region to be within the texture bounds
+			if (region_x < 0.0f) { region_x = 0.0f; }
+			else if (region_x > dimension.x - widgetDim.x) { region_x = dimension.x - widgetDim.x; }
+			if (region_y < 0.0f) { region_y = 0.0f; }
+			else if (region_y > dimension.y - widgetDim.y) { region_y = dimension.y - widgetDim.y; }
+
+			// Display the region coordinates and size
+			ImGui::Text("Image coord (%.2f, %.2f)", io.MousePos.x - pos.x, io.MousePos.y - pos.y);
+			ImGui::SameLine();
+			PixelRGBA P;
+			if (source->GetPixel(io.MousePos.x - pos.x, io.MousePos.y - pos.y, P) == 0) {
+				ImGui::Text("RGBA Val (%.2f, %.2f, %.2f, %.2f)", P.r, P.g, P.b, P.a);
+			}
+			ImGui::Text("Min: (%.2f, %.2f)", region_x, region_y);
+			ImGui::Text("Max: (%.2f, %.2f)", region_x + widgetDim.x, region_y + widgetDim.y);
+
+
+			ImVec2 uv0 = ImVec2((region_x) / dimension.x, (region_y) / dimension.y);
+			ImVec2 uv1 = ImVec2((region_x + widgetDim.x) / dimension.x, (region_y + widgetDim.y) / dimension.y);
+			ImGui::ImageWithBg(textureID, ImVec2(widgetDim.x * zoom, widgetDim.y * zoom), uv0, uv1, bgColor);
+			ImGui::EndTooltip();
+		}
 		return 0;
 	}
 	else return -1;

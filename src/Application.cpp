@@ -266,7 +266,7 @@ int Application::Run() {
                     ImGui::LabelText("info", "File path: %s", Manager.GetName(selection).c_str());
                     ImVec2 dim = Manager.GetDim(selection);
                     ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
-                    if (ImGui::Button("Denoise", ImVec2(0, 0))) {
+                    if (ImGui::Button("Smooth LF", ImVec2(0, 0))) {
                         int currentSelection = selection;
                         ImVec2 currentDim = dim;
                         std::jthread([this, currentSelection, currentDim]() {
@@ -275,15 +275,18 @@ int Application::Run() {
                                 std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
                                     image->ReadImageData(),
                                     static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
+                                    static_cast<unsigned int>(currentDim.y), 1, 1, 0.3);
+                                std::string name = std::string(Manager.GetName(selection) + "Copy");
+
                                 Manager.ImportFromSpan(
                                     denoised,
-                                    static_cast<unsigned int>(currentDim.x), 
-                                    static_cast<unsigned int>(currentDim.y), 
-                                    std::string(Manager.GetName(selection) + std::string("copy")));
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y),
+                                    name);
                             }
                         }).detach();
                     }
+                    ImGui::SameLine();
                     Manager.GetRenderer(selection)->DisplayImage();
                 }
             }

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CustomWidget.h"
+#include "ImageContainer.h"
 #include "imgui.h"
 #include <tinyfiledialogs.h>
 #include <iostream>
@@ -27,7 +28,7 @@ const char* OpenFileDialogue(const char* title, const char* const* filterPattern
 
 }
 
-void LoadImageTooltipWidget(unsigned int textureID, ImVec2 dimension, ImVec2 widgetDim, ImVec4 bgColor, float zoom)
+void LoadImageTooltipWidget(unsigned int textureID, std::shared_ptr<ImageEntry> source, ImVec2 dimension, ImVec2 widgetDim, ImVec4 bgColor, float zoom)
 {
     ImVec2 uv_min = ImVec2(0.0f, 0.0f);
     ImVec2 uv_max = ImVec2(1.0f, 1.0f);      
@@ -39,7 +40,7 @@ void LoadImageTooltipWidget(unsigned int textureID, ImVec2 dimension, ImVec2 wid
     if (ImGui::BeginItemTooltip())
     {
        
-    	float region_x = io.MousePos.x - pos.x - widgetDim.x* 0.5f; //Top left XY Coordinates of the region
+        float region_x = io.MousePos.x - pos.x - widgetDim.x * 0.5f; //Top left XY Coordinates of the region
         float region_y = io.MousePos.y - pos.y - widgetDim.y * 0.5f;
         float zoom = 8.0f;
     
@@ -51,6 +52,7 @@ void LoadImageTooltipWidget(unsigned int textureID, ImVec2 dimension, ImVec2 wid
     
         // Display the region coordinates and size
         ImGui::Text("Image coord (%.2f, %.2f)", io.MousePos.x - pos.x, io.MousePos.y - pos.y);
+        ImGui::SameLine();
 
         ImGui::Text("Min: (%.2f, %.2f)", region_x, region_y);
         ImGui::Text("Max: (%.2f, %.2f)", region_x + widgetDim.x, region_y + widgetDim.y);
