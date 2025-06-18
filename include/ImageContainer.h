@@ -192,7 +192,7 @@ public:
 	void LoadGPU();
 	void UnloadGPU();
 
-	int DisplayImage();
+	int DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor);
 
 private:
 	

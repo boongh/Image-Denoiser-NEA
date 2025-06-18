@@ -1,6 +1,14 @@
 #include "Application.h"
 #include <denoiser.h>
 
+#ifdef DEBUG
+#include <chrono>
+#endif // DEBUG
+
+
+#define TheGoodBlueColor ImVec4(64, 145, 190, 0)
+
+
 Application::Application(ImVec4 backgroundColor) : g_DebugView(false), g_ImageListView(true), g_ImagePreview(true), g_docklefttemp(false), g_viewport_id(0){
     //Default format filter
 
@@ -270,12 +278,16 @@ int Application::Run() {
                         int currentSelection = selection;
                         ImVec2 currentDim = dim;
                         std::jthread([this, currentSelection, currentDim]() {
+#ifdef DEBUG
+                            auto timer = std::chrono::high_resolution_clock();
+                            auto start = timer.now();
+
                             auto image = Manager.GetImage(currentSelection);
                             if (image) {
                                 std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
                                     image->ReadImageData(),
                                     static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y), 1, 1, 0.3);
+                                    static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
                                 std::string name = std::string(Manager.GetName(selection) + "Copy");
 
                                 Manager.ImportFromSpan(
@@ -284,10 +296,32 @@ int Application::Run() {
                                     static_cast<unsigned int>(currentDim.y),
                                     name);
                             }
+
+                            auto end = timer.now();
+                            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+                            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+#else
+                            auto image = Manager.GetImage(currentSelection);
+                            if (image) {
+                                std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
+                                    image->ReadImageData(),
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
+                                std::string name = std::string(Manager.GetName(selection) + "Copy");
+
+                                Manager.ImportFromSpan(
+                                    denoised,
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y),
+                                    name);
+
+                            }
+#endif // DEBUG
                         }).detach();
                     }
                     ImGui::SameLine();
-                    Manager.GetRenderer(selection)->DisplayImage();
+                    Manager.GetRenderer(selection)->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
                 }
             }
             ImGui::EndChild();

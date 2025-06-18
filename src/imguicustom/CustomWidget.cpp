@@ -28,7 +28,7 @@ const char* OpenFileDialogue(const char* title, const char* const* filterPattern
 
 }
 
-void LoadImageTooltipWidget(unsigned int textureID, std::shared_ptr<ImageEntry> source, ImVec2 dimension, ImVec2 widgetDim, ImVec4 bgColor, float zoom)
+void LoadImageTooltipWidget(unsigned int textureID, ImVec2 dimension, ImVec2 widgetDim, ImVec4 bgColor, float zoom)
 {
     ImVec2 uv_min = ImVec2(0.0f, 0.0f);
     ImVec2 uv_max = ImVec2(1.0f, 1.0f);      
