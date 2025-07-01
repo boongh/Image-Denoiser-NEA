@@ -1,4 +1,6 @@
 #include "denoiser.h"
+#include <omp.h>
+
 
 std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strn)
 {
@@ -15,6 +17,7 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 	unsigned int sumR, sumG, sumB;
 
 	try {
+
 		for (int pixelpos = 0; pixelpos < src.size(); ++pixelpos) {
 			pavg.Clear();
 			PosDecompose(pixelpos, width, height, &xPos, &yPos);
@@ -23,7 +26,7 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 			sumR = sumG = sumB = 0;
 
 			
-#if 1
+#if 0
 			for (unsigned int y = std::max(yPos - (int)halfHeight, 0); y < std::min(yPos + (int)halfHeight, (int)height); y++) {
 				for (unsigned int x = std::max(xPos - (int)halfWidth, 0); x < std::min(xPos + (int)halfWidth, (int)width); x++) {
 					postemp = PosCompose(x, y, width);
@@ -35,11 +38,14 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 				}
 			}
 #else
+
 			for (int y = - (int)halfHeight; y <= halfHeight; y++) {
 				for (int x = - (int)halfWidth; x <= halfWidth; x++) {
 					int actX = x + xPos;
 					int actY = y + yPos;
-					if (actX < 0 || actX >= width || actY < 0 || actY >= height) continue;
+
+					// prevents invalid location
+					if (actX < 0 || actX >= width || actY < 0 || actY >= height || (y == 0 && x == 0)) continue;
 					postemp = PosCompose(x + xPos, y + yPos, width);
 					PixelRGBA srcpixel = src[postemp];
 					sumR += srcpixel.r;
@@ -50,9 +56,13 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 			}
 #endif // 0
 
+
+#ifdef DEBUG	
 			if (cum == 0) {
 				printf("Latest pixel %d before crash (%d, %d, %d) with count %d", pixelpos, sumR, sumG, sumB, cum);
+				return std::vector<PixelRGBA>(0);
 			}
+#endif // DEBUG
 
 			pinit = src[pixelpos];
 			sumR /= cum; sumG /= cum;  sumB /= cum;
@@ -63,13 +73,6 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 				lerp<uint8_t>(sumB, pinit.b, strn),
 				pinit.a
 			);
-
-#ifdef DEBUG	
-			if (pixelpos % 10000 == 0) {
-				printf("Processing pixel %d : %d\n", pixelpos, static_cast<int>(src.size()));
-				printf("Values are (%d, %d, %d, %d)\n\n", dst[pixelpos].r, dst[pixelpos].g, dst[pixelpos].b, dst[pixelpos].a);
-			}
-#endif // DEBUG
 
 		}
 		return dst;

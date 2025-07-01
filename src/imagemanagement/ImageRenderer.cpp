@@ -3,20 +3,27 @@
 
 #pragma region Image Renderer
 
-ImageRenderer::ImageRenderer(std::shared_ptr<ImageEntry> Image) : source(Image), textureID(0), textureLoaded(false), width(0), height(0) {};
+ImageRenderer::ImageRenderer(std::shared_ptr<ImageEntry> Image) : source(Image), textureID(0), textureLoaded(false), width(0), height(0) {}
+ImageRenderer::~ImageRenderer() {
+	UnloadGPU();
+};
 
 void ImageRenderer::LoadGPU() {
-	width = source->GetWidth();
-	height = source->GetHeight();
-	LoadImage_s(textureID, reinterpret_cast<void*>(const_cast<PixelRGBA*>(source->ReadImageData().data())), width, height, source->GetChannels());
-	textureLoaded = true;
+	if (!textureLoaded) {
+		width = source->GetWidth();
+		height = source->GetHeight();
+		LoadImage_s(textureID, reinterpret_cast<void*>(const_cast<PixelRGBA*>(source->ReadImageData().data())), width, height, source->GetChannels());
+		textureLoaded = true;
+	}
 }
 
 void ImageRenderer::UnloadGPU() {
-	width = 0;
-	height = 0;
-	UnloadImage_s(textureID);
-	textureLoaded = false;
+	if (textureLoaded) {
+		width = 0;
+		height = 0;
+		UnloadImage_s(textureID);
+		textureLoaded = false;
+	}
 }
 
 int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {

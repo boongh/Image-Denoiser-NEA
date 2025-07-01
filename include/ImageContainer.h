@@ -6,6 +6,7 @@
 #include <FileFormats.h>
 #include <imgui.h>
 #include <unordered_map>
+#include <set>
 
 /// This class is used to manage image data, including loading, decompressing, and manipulating pixel values.
 /// /// The Image Data is stored as RGBAImageI from FileReader library
@@ -170,6 +171,8 @@ public:
 	int GetHeight() const;
 	int GetChannels() const;
 
+	CompressionStatus GetStatus() const;
+
 	///<---Disallow copy and moving for now for safety--->
 	///WIP will allow later when processing the same image twice is allowed
 
@@ -188,6 +191,7 @@ public:
 class ImageRenderer {
 public:
 	ImageRenderer(std::shared_ptr<ImageEntry> Image);
+	~ImageRenderer();
 
 	void LoadGPU();
 	void UnloadGPU();
@@ -200,7 +204,7 @@ private:
 	unsigned int height;
 
 	const std::shared_ptr<ImageEntry> source;
-	bool textureLoaded;
+	bool textureLoaded = false;
 	unsigned int textureID;
 };
 
@@ -213,14 +217,24 @@ public:
 	int ImportFromSpan(std::span<PixelRGBA> src, unsigned int width, unsigned int height, std::string name);
 
 	int LazyLoadImage(int index);
+	int LazyLoadImage(std::shared_ptr<ImageEntry> imageEntry);
+
+	int UnloadImage(int index);
+	int UnloadImage(std::set<std::shared_ptr<ImageEntry>> scheduledDeletion);
+
+	ImageEntry::CompressionStatus GetStatus(int index) const;
 
 	void Compress(int index);
 	void Decompress(int index);
 
 	std::shared_ptr<ImageRenderer>	CreateRenderer(int index);
+	std::shared_ptr<ImageRenderer> CreateRenderer(std::shared_ptr<ImageEntry> item);
+
 	std::shared_ptr<ImageRenderer> GetRenderer(int index);
 	std::shared_ptr<ImageRenderer> GetRenderer(std::shared_ptr<ImageEntry> imageEntry);
+	
 	void DestroyRenderer(int index);
+	void DestroyRenderer(std::shared_ptr<ImageEntry> imageEntry);
 
 	std::shared_ptr<ImageEntry> GetImage(int id);
 

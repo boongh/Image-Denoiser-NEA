@@ -188,7 +188,6 @@ int ImageEntry::DecompressImageData() {
 }
 
 std::shared_ptr<ImageEntry> ImageEntry::AcquireRead() const {
-	assert(IsDecompressed());
 	return std::const_pointer_cast<ImageEntry>(shared_from_this());
 }
 
@@ -196,9 +195,22 @@ bool ImageEntry::IsLoaded() const { return status != CompressionStatus::NOT_LOAD
 bool ImageEntry::IsDecompressed() const { return status == CompressionStatus::DECOMPRESSED; }
 bool ImageEntry::IsFree() const { return shared_from_this().use_count() == 1; }
 std::string ImageEntry::GetFilePath() const { return path; }
-int ImageEntry::GetWidth() const { return width; }
-int ImageEntry::GetHeight() const { return height; }
-int ImageEntry::GetChannels() const { return channels; }
+int ImageEntry::GetWidth() const { 
+	assert(IsDecompressed() || IsLoaded()); // Ensure the image is loaded or decompressed before accessing width
+	return width; 
+}
+int ImageEntry::GetHeight() const { 
+	assert(IsDecompressed() || IsLoaded()); // Ensure the image is loaded or decompressed before accessing width
+	return height; 
+}
+int ImageEntry::GetChannels() const { 
+	assert(IsDecompressed() || IsLoaded()); // Ensure the image is loaded or decompressed before accessing width
+	return channels; 
+}
+
+ImageEntry::CompressionStatus ImageEntry::GetStatus() const {
+	return status;
+}
 
 
 #pragma endregion

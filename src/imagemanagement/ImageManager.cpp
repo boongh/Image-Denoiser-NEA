@@ -19,6 +19,7 @@
 #endif // ! STB_IMAGE_IMPLEMENTATION 
 
 #include <span>
+#include <set>
 
 
 #pragma endregion
@@ -46,6 +47,33 @@ int ImageManager::LazyLoadImage(int index) {
 	return 0;
 }
 
+int ImageManager::LazyLoadImage(std::shared_ptr<ImageEntry> imageEntry) {
+	auto it = std::find(imageEntries.begin(), imageEntries.end(), imageEntry);
+	if (it != imageEntries.end()) {
+		(*it)->LoadImage();
+		return 0;
+	}
+	return -1; // Image not found
+}
+
+int ImageManager::UnloadImage(int index) {
+	imageEntries.erase(imageEntries.begin() + index);
+	return 0;
+}
+
+int ImageManager::UnloadImage(std::set<std::shared_ptr<ImageEntry>> scheduledDeletion) {
+	auto removeitem = std::remove_if(imageEntries.begin(), imageEntries.end(),
+		[&](const std::shared_ptr<ImageEntry>& entry) {
+			return scheduledDeletion.find(entry) != scheduledDeletion.end();
+		});
+	imageEntries.erase(removeitem, imageEntries.end());
+	return 0;
+}
+
+ImageEntry::CompressionStatus ImageManager::GetStatus(int index) const {
+	return imageEntries[index]->GetStatus();
+}
+
 void ImageManager::Compress(int index) { imageEntries[index]->CompressImageData(); }
 void ImageManager::Decompress(int index) { imageEntries[index]->DecompressImageData(); }
 
@@ -54,6 +82,18 @@ std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(int index) {
 	auto renderer = std::make_shared<ImageRenderer>(entry);
 	imageRenderers.insert({ entry, renderer });
 	return renderer;
+}
+
+std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(std::shared_ptr<ImageEntry> item) {
+	auto it = std::find(imageEntries.begin(), imageEntries.end(), item);
+	if(it != imageEntries.end()) {
+		auto renderer = std::make_shared<ImageRenderer>(item);
+		imageRenderers.insert({ item, renderer });
+		return renderer;
+	}
+	else {
+		return nullptr; // ImageEntry not found
+	}
 }
 
 std::shared_ptr<ImageRenderer> ImageManager::GetRenderer(int index) {
@@ -75,7 +115,14 @@ void ImageManager::DestroyRenderer(int index) {
 	imageRenderers.erase(imageEntries[index]);
 }
 
-std::shared_ptr<ImageEntry> ImageManager::GetImage(int id) { return imageEntries[id]->AcquireRead(); }
+void ImageManager::DestroyRenderer(std::shared_ptr<ImageEntry> imageEntry) {
+	auto rval = imageRenderers.find(imageEntry);
+	if (rval != imageRenderers.end()) {
+		imageRenderers.erase(rval);
+	}
+}
+
+std::shared_ptr<ImageEntry> ImageManager::GetImage(int id) { return (id >= 0 && id < imageEntries.size()) ? imageEntries[id]->AcquireRead() : nullptr; }
 std::string ImageManager::GetName(int id) const { return imageEntries[id]->GetFilePath(); }
 
 ImVec2 ImageManager::GetDim(int id) const {
