@@ -30,6 +30,28 @@
 
 size_t ImageManager::GetImageCount() { return imageEntries.size(); }
 
+std::vector<std::shared_ptr<ImageEntry>>::iterator ImageManager::begin() {
+	return imageEntries.begin();
+}
+
+std::vector<std::shared_ptr<ImageEntry>>::const_iterator ImageManager::begin() const {
+	return imageEntries.begin();
+}
+
+std::vector<std::shared_ptr<ImageEntry>>::const_iterator ImageManager::cbegin() const {
+	return imageEntries.cbegin();
+}
+
+std::vector<std::shared_ptr<ImageEntry>>::iterator ImageManager::end() {
+	return imageEntries.end();
+}
+std::vector<std::shared_ptr<ImageEntry>>::const_iterator ImageManager::end() const{ 
+	return imageEntries.end();
+}
+std::vector<std::shared_ptr<ImageEntry>>::const_iterator ImageManager::cend() const{ 
+	return imageEntries.cend();
+}
+
 int ImageManager::ImportFromFile(std::string path) {
 	auto newImage = std::make_shared<ImageEntry>(path);
 	imageEntries.push_back(newImage);

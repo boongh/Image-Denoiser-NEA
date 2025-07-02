@@ -12,7 +12,7 @@ bool LoadImage_s(unsigned int& textureID, void* data, unsigned int width, unsign
 	try {
 
 		// Load the image data into the texture
-		if (data) {
+		if (data != nullptr) {
 			glGenTextures(1, &textureID);
 			glBindTexture(GL_TEXTURE_2D, textureID);
 

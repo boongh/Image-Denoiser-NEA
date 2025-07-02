@@ -1,7 +1,9 @@
 #include "Application.h"
 #include <denoiser.h>
+#include <print>
 
 #ifdef DEBUG
+
 #include <chrono>
 #endif // DEBUG
 
@@ -196,11 +198,11 @@ void Application::DisplayMenu() {
         if(ImGui::BeginMenu("Edit"))
         {
             if (ImGui::MenuItem("Load All", "CTRL+SHIFT+A")) {
-                for (int image = 0; image < Manager.GetImageCount(); image++) {
-                    if (Manager.GetStatus(image) == ImageEntry::CompressionStatus::NOT_LOADED) {
+                for (auto image : Manager) {
+                    if (image->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
                         Manager.LazyLoadImage(image);
-                    }
-				}
+					}
+                }
             }
             if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
             if (ImGui::MenuItem("Redo", "CTRL+Y")) {}
@@ -523,8 +525,11 @@ int Application::Run() {
 
             if (&*selection != &*prevselection) {
                 if (selection != nullptr) {
-                    selection->LoadImage();
-                    Manager.CreateRenderer(selection)->LoadGPU();
+                    if (selection->LoadImage() == 0) 
+                        Manager.CreateRenderer(selection)->LoadGPU();
+                    else {
+                        std::printf("Fail to load image file");
+                    }
                 }
                 if (prevselection != nullptr) {
                     Manager.DestroyRenderer(prevselection);

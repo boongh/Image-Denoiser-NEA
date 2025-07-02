@@ -213,6 +213,14 @@ class ImageManager {
 public:
 	size_t GetImageCount();
 
+	std::vector<std::shared_ptr<ImageEntry>>::iterator begin();
+	std::vector<std::shared_ptr<ImageEntry>>::const_iterator begin() const;
+	std::vector<std::shared_ptr<ImageEntry>>::const_iterator cbegin() const;
+
+	std::vector<std::shared_ptr<ImageEntry>>::iterator end();
+	std::vector<std::shared_ptr<ImageEntry>>::const_iterator end() const;
+	std::vector<std::shared_ptr<ImageEntry>>::const_iterator cend() const;
+
 	int ImportFromFile(std::string path);
 	int ImportFromSpan(std::span<PixelRGBA> src, unsigned int width, unsigned int height, std::string name);
 
