@@ -3,7 +3,6 @@
 #include "FileReader.h"
 #include "QOIFormat.h"
 
-
 ///Implementation of ImageContainer.h
 
 //<---Image Entry class Implementation--->
@@ -120,25 +119,19 @@ int ImageEntry::SetPixel(int x, int y, const PixelRGBA& p) {
 
 /// Currently can only load 8bit image due to limitation of the FileReader Library
 int ImageEntry::LoadImage() {
-
 	std::unique_lock lock(lockstate);
 
 	if (IsLoaded()) return 0; // Already loaded
 
-	try {
-		FileReader::ReadImage(path, imageData);
-
+	if (FileReader::ReadImage(path, imageData)) {
 		width = imageData.width;
 		height = imageData.height;
 		channels = imageData.channels;
 
 		status = CompressionStatus::DECOMPRESSED; // Set the status to loaded
 		return 0; // Success
-
 	}
-	catch (const std::exception&) {
-		return -1; // Error loading image
-	}
+	return -1; // Error loading image
 }
 int ImageEntry::UnloadImage() {
 	std::unique_lock lock(lockstate);

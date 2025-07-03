@@ -545,48 +545,54 @@ int Application::Run() {
             ImGui::BeginChild("ImagePreview");
             {
                 if (selection != nullptr) {
-                    ImGui::LabelText("info", "File path: %s", selection->GetFilePath().c_str());
-                    ImVec2 dim = ImVec2(selection->GetWidth(), selection->GetHeight());
-                    ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
-                    if (ImGui::Button("Smooth LF", ImVec2(0, 0))) {
-                        auto currentSelection = selection;
-                        ImVec2 currentDim = dim;
-                        std::jthread([this, currentSelection, currentDim]() {
-
-#ifdef DEBUG
-                            auto timer = std::chrono::high_resolution_clock();
-                            auto start = timer.now();
-#endif // DEBUG
-
-                            if (currentSelection != nullptr) {
-                                std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
-                                    currentSelection->ReadImageData(),
-                                    static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
-                                std::string name = std::string(currentSelection->GetFilePath() + "Copy");
-
-                                Manager.ImportFromSpan(
-                                    denoised,
-                                    static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y),
-                                    name);
-                            }
-
-#ifdef DEBUG
-                            auto end = timer.now();
-                            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-                            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
-#endif // DEBUG
-
-                        }).detach();
+                    if (selection->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
+                        ImGui::Text("FAILED TO LOAD IMAGE");
                     }
-                    ImGui::SameLine();
-                    auto renderer = Manager.GetRenderer(selection);
-                    if(renderer == nullptr) {
-                        renderer = Manager.CreateRenderer(selection);
-					}
-                    renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
+                    else {
+
+                        ImGui::LabelText("info", "File path: %s", selection->GetFilePath().c_str());
+                        ImVec2 dim = ImVec2(selection->GetWidth(), selection->GetHeight());
+                        ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
+                        if (ImGui::Button("Smooth LF", ImVec2(0, 0))) {
+                            auto currentSelection = selection;
+                            ImVec2 currentDim = dim;
+                            std::jthread([this, currentSelection, currentDim]() {
+
+    #ifdef DEBUG
+                                auto timer = std::chrono::high_resolution_clock();
+                                auto start = timer.now();
+    #endif // DEBUG
+
+                                if (currentSelection != nullptr) {
+                                    std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
+                                        currentSelection->ReadImageData(),
+                                        static_cast<unsigned int>(currentDim.x),
+                                        static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
+                                    std::string name = std::string(currentSelection->GetFilePath() + "Copy");
+
+                                    Manager.ImportFromSpan(
+                                        denoised,
+                                        static_cast<unsigned int>(currentDim.x),
+                                        static_cast<unsigned int>(currentDim.y),
+                                        name);
+                                }
+
+    #ifdef DEBUG
+                                auto end = timer.now();
+                                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+                                std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+    #endif // DEBUG
+
+                            }).detach();
+                        }
+                        ImGui::SameLine();
+                        auto renderer = Manager.GetRenderer(selection);
+                        if(renderer == nullptr) {
+                            renderer = Manager.CreateRenderer(selection);
+					    }
+                        renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
+                    }
                 }
             }
             ImGui::EndChild();
