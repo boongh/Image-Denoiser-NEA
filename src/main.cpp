@@ -14,6 +14,6 @@ int main() {
 	app.DEBUGRUN(TESTDATA);
 
 	app.Run();
-	
+
 	return 0;
 }

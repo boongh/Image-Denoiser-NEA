@@ -82,6 +82,74 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 	}
 }
 
+std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strnSpatial, double strnIntensity) {
+	auto denoisedimage = std::vector<PixelRGBA>(src.size());
+
+	double inverseSpatial = 1.0 / strnSpatial;
+	double inverseIntensity = 1.0 / strnIntensity;
+
+	for (int pixelnum = 0; pixelnum < src.size(); pixelnum++) {
+		int xPos = 0;
+		int yPos = 0;
+
+		double sumR = 0;
+		double sumG = 0;
+		double sumB = 0;
+
+		double sumRw = 0;
+		double sumGw = 0;
+		double sumBw = 0;
+
+		// Decompose pixel position
+		PosDecompose(pixelnum, width, height, &xPos, &yPos);
+		PixelRGBA pinit = src[pixelnum];
+		for (int x = -halfWidth; x <= halfWidth; x++) {
+			for (int y = -halfHeight; y <= halfHeight; y++) {
+				int actX = x + xPos;
+				int actY = y + yPos;
+
+				// prevents invalid location
+				if (actX < 0 || actX >= width || actY < 0 || actY >= height) continue;
+
+				unsigned int postemp = PosCompose(actX, actY, width);
+				PixelRGBA srcpixel = src[postemp];
+
+				//Normalize the distance
+
+				double xd = ((double)actX - xPos) / width;
+				double yd = ((double)actY - yPos) / height;
+
+				double rangeDist = xd * xd + yd * yd;
+				double DistAttenuation = Bilateral::RangeAttenuation(rangeDist, inverseSpatial);
+
+				// Calculate the weight for each channel
+				{
+					// Normalize intensity
+					double rw = Bilateral::IntensityAttenuation((pinit.r - srcpixel.r) * (pinit.r - srcpixel.r) / 65025.0, inverseIntensity) * DistAttenuation;
+					double gw = Bilateral::IntensityAttenuation((pinit.g - srcpixel.g) * (pinit.g - srcpixel.g) / 65025.0, inverseIntensity) * DistAttenuation;
+					double bw = Bilateral::IntensityAttenuation((pinit.b - srcpixel.b) * (pinit.b - srcpixel.b) / 65025.0, inverseIntensity) * DistAttenuation;
+
+					sumR += srcpixel.r * rw;
+					sumG += srcpixel.g * gw;
+					sumB += srcpixel.b * bw;
+
+					sumRw += rw;
+					sumGw += gw;
+					sumBw += bw;
+				}
+
+			}
+
+		}
+		if (pixelnum % 1000) printf("Filtering pixel %d", pixelnum);
+		denoisedimage[pixelnum].r = static_cast<uint8_t>(sumR / sumRw);
+		denoisedimage[pixelnum].g = static_cast<uint8_t>(sumG / sumGw);
+		denoisedimage[pixelnum].b = static_cast<uint8_t>(sumB / sumBw);
+	}
+
+	return denoisedimage;
+}
+
 void Denoiser::PosDecompose(
 	unsigned int pos, 
 	unsigned int width, 
@@ -96,4 +164,14 @@ inline int Denoiser::PosCompose(unsigned int xstr,
 	unsigned int ystr,
 	unsigned int width) {
 	return xstr + ystr * width;
+}
+
+inline double Denoiser::Bilateral::RangeAttenuation(double distanceSquared, double inverseSD)
+{
+	return exp(-(distanceSquared) * (0.5 * inverseSD * inverseSD));
+}
+
+inline double Denoiser::Bilateral::IntensityAttenuation(double distanceSquared, double inverseSD)
+{
+	return exp(-(distanceSquared) * (0.5 * inverseSD * inverseSD));
 }

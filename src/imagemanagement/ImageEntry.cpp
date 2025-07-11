@@ -133,6 +133,7 @@ int ImageEntry::LoadImage() {
 	}
 	return -1; // Error loading image
 }
+
 int ImageEntry::UnloadImage() {
 	std::unique_lock lock(lockstate);
 

@@ -8,7 +8,7 @@
 class Denoiser {
 public:
 	/// <summary>
-	/// 
+	/// Mean Linear filtering (LF) denoising algorithm.
 	/// </summary>
 	/// <param name="src"></param>
 	/// <param name="dst"></param>
@@ -19,6 +19,16 @@ public:
 		unsigned int width, unsigned int height, 
 		int halfWidth, int halfHeight, 
 		double strn);
+
+	static std::vector<PixelRGBA> BilateralFilter(std::span<const PixelRGBA> src,
+		unsigned int width, unsigned int height,
+		int halfWidth, int halfHeight, double strnSpatial, double strnIntensity);
+
+	class Bilateral {
+	public:
+		static inline double RangeAttenuation(double distance, double strn);
+		static inline double IntensityAttenuation(double distance, double strn);
+	};
 
 	static void PosDecompose(
 		unsigned int pos,

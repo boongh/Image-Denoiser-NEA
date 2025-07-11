@@ -80,7 +80,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
       <PreprocessorDefinitions>DEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
@@ -116,7 +116,7 @@
       <SDLCheck>true</SDLCheck>
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard>stdcpp23</LanguageStandard>
       <PreprocessorDefinitions>DEBUG=1;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>

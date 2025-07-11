@@ -84,6 +84,7 @@ int ImageManager::UnloadImage(int index) {
 }
 
 int ImageManager::UnloadImage(std::set<std::shared_ptr<ImageEntry>> scheduledDeletion) {
+
 	auto removeitem = std::remove_if(imageEntries.begin(), imageEntries.end(),
 		[&](const std::shared_ptr<ImageEntry>& entry) {
 			return scheduledDeletion.find(entry) != scheduledDeletion.end();

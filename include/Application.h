@@ -109,8 +109,15 @@ public:
 class Application {
 public:
 
+    //Format filter
+    const static char* formatfilter[];
+	const int formatfiltercount = 3;
+
     Application(ImVec4 backgroundColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f));
     int Run();
+
+    template <typename ... Args>
+	bool ImGuiCheckShortcuts(Args &&...args);
 
 #ifdef DEBUG
 
@@ -145,6 +152,14 @@ private:
 
     std::shared_ptr<ImageEntry> selection = nullptr;
     std::shared_ptr<ImageEntry> prevselection = nullptr;
-
-    std::vector<char*> formatfilter;
+    
+    //Menu functions for access outside of menu
+    void LoadAllImages();
+	void OpenImageFile();
 };
+
+template<typename ...Args>
+inline bool Application::ImGuiCheckShortcuts(Args && ...args)
+{	
+    return (ImGui::IsKeyDown(args) && ...);
+}
