@@ -123,7 +123,7 @@ int ImageEntry::LoadImage() {
 
 	if (IsLoaded()) return 0; // Already loaded
 
-	if (FileReader::ReadImage(path, imageData)) {
+	if (FileReader::ReadImage(path.string(), imageData)) {
 		width = imageData.width;
 		height = imageData.height;
 		channels = imageData.channels;
@@ -188,7 +188,9 @@ std::shared_ptr<ImageEntry> ImageEntry::AcquireRead() const {
 bool ImageEntry::IsLoaded() const { return status != CompressionStatus::NOT_LOADED; }
 bool ImageEntry::IsDecompressed() const { return status == CompressionStatus::DECOMPRESSED; }
 bool ImageEntry::IsFree() const { return shared_from_this().use_count() == 1; }
-std::string ImageEntry::GetFilePath() const { return path; }
+std::string ImageEntry::GetFilePathString() const { return path.string(); }
+std::filesystem::path ImageEntry::GetFilePath_path() const { return path; }
+std::filesystem::path ImageEntry::GetFileName() const { return path.filename(); }
 int ImageEntry::GetWidth() const { 
 	assert(IsDecompressed() || IsLoaded()); // Ensure the image is loaded or decompressed before accessing width
 	return width; 

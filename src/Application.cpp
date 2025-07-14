@@ -1,5 +1,6 @@
 #include "Application.h"
 #include <denoiser.h>
+#include <filesystem>
 
 #ifdef DEBUG
 
@@ -179,7 +180,7 @@ void Application::DisplayMenu() {
     {
         if (ImGui::BeginMenu("File"))
         {
-            if (ImGui::MenuItem("Open file", "CTRL+O") || ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_O)) {
+            if (ImGui::MenuItem("Open file", "CTRL+O")) {
 				OpenImageFile();
             }
 
@@ -250,6 +251,7 @@ int Application::Run() {
             continue;
         }
 
+
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
@@ -258,39 +260,166 @@ int Application::Run() {
 
         if (g_firstframe) {
             g_firstframe = false;
+
             //BuildDockLayout();
+        }
+
+        //Create a dock space in your main window
+        {
+            static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+            ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking;
+
+
+            const ImGuiViewport* viewport = ImGui::GetMainViewport();
+            ImGui::SetNextWindowPos(viewport->Pos);
+            ImGui::SetNextWindowSize(viewport->Size);
+            ImGui::SetNextWindowViewport(viewport->ID);
+
+            window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+
+            //This part of the code causes error
+            ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
+            ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{ 0.0f , 0.0f});
+
+
+			//Create a window that is at the main window position and size
+            ImGui::Begin("DockSpace Demo", nullptr, window_flags);
+
+            ImGui::PopStyleVar(4);
+            
+            ImGuiID dockspace_id = ImGui::GetID("MyDockSpace");
+            ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+
+		    DisplayMenu();
+
+            ImGui::End();
         }
 
         ImGuiIO& io = ImGui::GetIO();
 
+		ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_FirstUseEver);
+		ImGui::Begin("Preview", nullptr);
+
+
+        ImGui::BeginChild("ImagePreview", ImVec2(0, 0));
         {
+            if (selection != nullptr) {
+                if (selection->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
+                    ImGui::Text("FAILED TO LOAD IMAGE");
+                }
+                else {
+                    ImGui::LabelText("info", "File path: %s", selection->GetFileName().string().c_str());
+                    ImVec2 dim = ImVec2(selection->GetWidth(), selection->GetHeight());
+                    ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
+                    if (ImGui::Button("Smooth LF", ImVec2(0, 0))) {
+                        auto currentSelection = selection;
+                        ImVec2 currentDim = dim;
+                        std::jthread([this, currentSelection, currentDim]() {
 
-            bool t = true;
-            ImGui::Begin("ImageListView", &t, ImGuiWindowFlags_MenuBar);
+#ifdef DEBUG
+                            auto timer = std::chrono::high_resolution_clock();
+                            auto start = timer.now();
+#endif // DEBUG
 
-            DisplayMenu();
+                            if (currentSelection != nullptr) {
+                                std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
+                                    currentSelection->ReadImageData(),
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
+                                std::string name = std::string(currentSelection->GetFilePathString() + "Copy");
 
+                                Manager.ImportFromSpan(
+                                    denoised,
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y),
+                                    name);
+                            }
+
+#ifdef DEBUG
+                            auto end = timer.now();
+                            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+                            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+#endif // DEBUG
+
+                            }).detach();
+                    }
+
+
+                    static float bilateralStrengthSpatial = 1;
+                    static float bilateralStrengthIntensity = 1;
+                    static int halfwidth = 5;
+                    static int halfheight = 5;
+
+                    if (ImGui::Button("Bilateral Filter")) {
+                        auto currentSelection = selection;
+                        ImVec2 currentDim = dim;
+                        float ss = bilateralStrengthSpatial;
+                        float si = bilateralStrengthIntensity;
+                        int w = halfwidth;
+                        int h = halfheight;
+                        std::jthread([this, currentSelection, currentDim, ss, si, w, h]() {
+
+#ifdef DEBUG
+                            auto timer = std::chrono::high_resolution_clock();
+                            auto start = timer.now();
+#endif // DEBUG
+
+                            if (currentSelection != nullptr) {
+                                std::vector<PixelRGBA> denoised = Denoiser::BilateralFilter(
+                                    currentSelection->ReadImageData(),
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y), w, h,
+                                    ss, si);
+                                std::string name = std::string(currentSelection->GetFilePathString() + "Copy");
+
+                                Manager.ImportFromSpan(
+                                    denoised,
+                                    static_cast<unsigned int>(currentDim.x),
+                                    static_cast<unsigned int>(currentDim.y),
+                                    name);
+                            }
+
+#ifdef DEBUG
+                            auto end = timer.now();
+                            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+                            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+#endif // DEBUG
+
+                            }).detach();
+                    }
+
+					ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
+                    ImGui::InputFloat("Strength Spatial", &bilateralStrengthSpatial, 1, 5);
+                    ImGui::InputFloat("Strength Intensity", &bilateralStrengthIntensity, 1, 5);
+					ImGui::PopItemWidth();
+
+                    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+                    ImGui::InputInt("Half Width", &halfwidth, 1, 5);
+                    ImGui::SameLine();
+                    ImGui::InputInt("Half Height", &halfheight, 1, 5);
+                    ImGui::PopItemWidth();
+                    auto renderer = Manager.GetRenderer(selection);
+                    renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
+                }
+            }
+        }
+        ImGui::EndChild();
+
+		ImGui::End();
+        {
+            ImGui::Begin("ImageListView", nullptr, ImGuiWindowFlags_NoNav);
+
+           
             ImGui::PushStyleVar(ImGuiStyleVar_ImageBorderSize, std::max(1.0f, ImGui::GetStyle().ImageBorderSize));
 
-            ImGui::BeginChild("Image list", ImVec2(0, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX | ImGuiChildFlags_ResizeY);
+            ImGui::BeginChild("Image list", ImVec2(0, 0), ImGuiChildFlags_Borders);
 
             ImVec2 pos = ImGui::GetCursorScreenPos();
-
-            //if (ImGui::Checkbox("Use memory compression", &g_useCompress)) {
-            //    if (g_useCompress) {
-            //        for (int i = 0; i < Manager.GetImageCount(); ++i) {
-            //            std::cout << "Compressed " << Manager.GetName(i) << "\n";
-            //            Manager.Compress(i);
-            //        }
-            //    }
-            //    else {
-            //        for (int i = 0; i < Manager.GetImageCount(); ++i) {
-            //            std::cout << "Decompressed " << Manager.GetName(i) << "\n";
-            //            Manager.Decompress(i);
-            //        }
-            //    }
-            //}
-            // 
 
             //Check shortcuts
             if(ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_O)) {
@@ -312,41 +441,6 @@ int Application::Run() {
             static bool want_delete;
             static std::set<std::shared_ptr<ImageEntry>> deletionSet;
 
-            /*if (ImGui::TreeNode("Options"))
-            {
-                if (ImGui::RadioButton("Selectables", widget_type == WidgetType_Selectable)) { widget_type = WidgetType_Selectable; }
-                ImGui::SameLine();
-                if (ImGui::RadioButton("Tree nodes", widget_type == WidgetType_TreeNode)) { widget_type = WidgetType_TreeNode; }
-                ImGui::SameLine();
-                ImGui::Checkbox("Enable clipper", &use_clipper);
-                ImGui::Checkbox("Enable deletion", &use_deletion);
-                ImGui::Checkbox("Enable drag & drop", &use_drag_drop);
-                ImGui::Checkbox("Show in a table", &show_in_table);
-                ImGui::Checkbox("Show color button", &show_color_button);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_SingleSelect", &flags, ImGuiMultiSelectFlags_SingleSelect);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_NoSelectAll", &flags, ImGuiMultiSelectFlags_NoSelectAll);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_NoRangeSelect", &flags, ImGuiMultiSelectFlags_NoRangeSelect);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_NoAutoSelect", &flags, ImGuiMultiSelectFlags_NoAutoSelect);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_NoAutoClear", &flags, ImGuiMultiSelectFlags_NoAutoClear);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_NoAutoClearOnReselect", &flags, ImGuiMultiSelectFlags_NoAutoClearOnReselect);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_BoxSelect1d", &flags, ImGuiMultiSelectFlags_BoxSelect1d);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_BoxSelect2d", &flags, ImGuiMultiSelectFlags_BoxSelect2d);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_BoxSelectNoScroll", &flags, ImGuiMultiSelectFlags_BoxSelectNoScroll);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_ClearOnEscape", &flags, ImGuiMultiSelectFlags_ClearOnEscape);
-                ImGui::CheckboxFlags("ImGuiMultiSelectFlags_ClearOnClickVoid", &flags, ImGuiMultiSelectFlags_ClearOnClickVoid);
-                if (ImGui::CheckboxFlags("ImGuiMultiSelectFlags_ScopeWindow", &flags, ImGuiMultiSelectFlags_ScopeWindow) && (flags & ImGuiMultiSelectFlags_ScopeWindow))
-                    flags &= ~ImGuiMultiSelectFlags_ScopeRect;
-                if (ImGui::CheckboxFlags("ImGuiMultiSelectFlags_ScopeRect", &flags, ImGuiMultiSelectFlags_ScopeRect) && (flags & ImGuiMultiSelectFlags_ScopeRect))
-                    flags &= ~ImGuiMultiSelectFlags_ScopeWindow;
-                if (ImGui::CheckboxFlags("ImGuiMultiSelectFlags_SelectOnClick", &flags, ImGuiMultiSelectFlags_SelectOnClick) && (flags & ImGuiMultiSelectFlags_SelectOnClick))
-                    flags &= ~ImGuiMultiSelectFlags_SelectOnClickRelease;
-                if (ImGui::CheckboxFlags("ImGuiMultiSelectFlags_SelectOnClickRelease", &flags, ImGuiMultiSelectFlags_SelectOnClickRelease) && (flags & ImGuiMultiSelectFlags_SelectOnClickRelease))
-                    flags &= ~ImGuiMultiSelectFlags_SelectOnClick;
-                ImGui::SameLine();
-                ImGui::TreePop();
-            }*/
-
-            // Initialize default list with 1000 items.
             // Use default selection.Adapter: Pass index to SetNextItemSelectionUserData(), store index in Selection
             static ImVector<int> items;
             static int items_next_id = 0;
@@ -357,7 +451,7 @@ int Application::Run() {
 
             const float items_height = (widget_type == WidgetType_TreeNode) ? ImGui::GetTextLineHeight() : ImGui::GetTextLineHeightWithSpacing();
             ImGui::SetNextWindowContentSize(ImVec2(0.0f, items.Size * items_height));
-            if (ImGui::BeginChild("##Basket", ImVec2(-FLT_MIN, ImGui::GetFontSize() * 20), ImGuiChildFlags_FrameStyle | ImGuiChildFlags_ResizeY))
+            if (ImGui::BeginChild("##Basket", ImVec2(-FLT_MIN, 0), ImGuiChildFlags_FrameStyle))
             {
                 ImVec2 color_button_sz(ImGui::GetFontSize(), ImGui::GetFontSize());
                 if (widget_type == WidgetType_TreeNode)
@@ -415,7 +509,14 @@ int Application::Run() {
                         const int item_id = items[n];
                         const char* item_category = "";
                         char label[256];
-                        sprintf_s(label, "Object %05d: %s", item_id, Manager.GetName(n).c_str());
+
+						std::filesystem::path item_path = Manager.GetPath_path(n);
+						std::filesystem::path filename = item_path.filename();
+						std::filesystem::path parentDir = item_path.parent_path();
+
+						std::string fileIdentifier = item_path.parent_path().filename().string() + "/" + item_path.filename().string();
+
+                        sprintf_s(label, "%s", fileIdentifier.c_str());
 
                         // IMPORTANT: for deletion refocus to work we need object ID to be stable,
                         // aka not depend on their index in the list. Here we use our persistent item_id
@@ -578,115 +679,6 @@ int Application::Run() {
             ImGui::EndChild();
             
             ImGui::SameLine(0.0f, 1.0f);
-            
-
-            ImGui::BeginChild("ImagePreview");
-            {
-                if (selection != nullptr) {
-                    if (selection->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
-                        ImGui::Text("FAILED TO LOAD IMAGE");
-                    }
-                    else {
-
-                        ImGui::LabelText("info", "File path: %s", selection->GetFilePath().c_str());
-                        ImVec2 dim = ImVec2(selection->GetWidth(), selection->GetHeight());
-                        ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
-                        if (ImGui::Button("Smooth LF", ImVec2(0, 0))) {
-                            auto currentSelection = selection;
-                            ImVec2 currentDim = dim;
-                            std::jthread([this, currentSelection, currentDim]() {
-
-    #ifdef DEBUG
-                                auto timer = std::chrono::high_resolution_clock();
-                                auto start = timer.now();
-    #endif // DEBUG
-
-                                if (currentSelection != nullptr) {
-                                    std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
-                                        currentSelection->ReadImageData(),
-                                        static_cast<unsigned int>(currentDim.x),
-                                        static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
-                                    std::string name = std::string(currentSelection->GetFilePath() + "Copy");
-
-                                    Manager.ImportFromSpan(
-                                        denoised,
-                                        static_cast<unsigned int>(currentDim.x),
-                                        static_cast<unsigned int>(currentDim.y),
-                                        name);
-                                }
-
-    #ifdef DEBUG
-                                auto end = timer.now();
-                                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-                                std::cout << "Took " << elapsed.count() << " ms" << std::endl;
-    #endif // DEBUG
-
-                            }).detach();
-                        }
-
-
-                        static float bilateralStrengthSpatial = 1;
-                        static float bilateralStrengthIntensity = 1;
-						static int halfwidth = 5;
-						static int halfheight = 5;
-
-                        if (ImGui::Button("Bilateral Filter")) {
-                            auto currentSelection = selection;
-                            ImVec2 currentDim = dim;
-                            float ss = bilateralStrengthSpatial;
-							float si = bilateralStrengthIntensity;
-							int w = halfwidth;
-							int h = halfheight;
-                            std::jthread([this, currentSelection, currentDim, ss, si, w, h]() {
-
-#ifdef DEBUG
-                                auto timer = std::chrono::high_resolution_clock();
-                                auto start = timer.now();
-#endif // DEBUG
-
-                                if (currentSelection != nullptr) {
-                                    std::vector<PixelRGBA> denoised = Denoiser::BilateralFilter(
-                                        currentSelection->ReadImageData(),
-                                        static_cast<unsigned int>(currentDim.x),
-                                        static_cast<unsigned int>(currentDim.y), w, h, 
-                                        ss, si);
-                                    std::string name = std::string(currentSelection->GetFilePath() + "Copy");
-
-                                    Manager.ImportFromSpan(
-                                        denoised,
-                                        static_cast<unsigned int>(currentDim.x),
-                                        static_cast<unsigned int>(currentDim.y),
-                                        name);
-                                }
-
-#ifdef DEBUG
-                                auto end = timer.now();
-                                auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-                                std::cout << "Took " << elapsed.count() << " ms" << std::endl;
-#endif // DEBUG
-
-                                }).detach();
-                        }
-
-                        ImGui::InputFloat("Strength Spatial", &bilateralStrengthSpatial, 1, 5);
-                        ImGui::InputFloat("Strength Intensity", &bilateralStrengthIntensity, 1, 5);
-
-						ImGui::BeginChild("HalfHeight", ImVec2(600, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX | ImGuiChildFlags_ResizeY);
-
-                        ImGui::InputInt("Half Width", &halfwidth, 1, 5);
-						ImGui::SameLine();
-                        ImGui::InputInt("Half Height", &halfheight, 1, 5);
-
-						ImGui::EndChild();
-
-                        auto renderer = Manager.GetRenderer(selection);
-                        renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
-                    }
-                }
-            }
-            ImGui::EndChild();
 
             ImGui::PopStyleVar();
             ImGui::End();

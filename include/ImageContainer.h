@@ -7,6 +7,7 @@
 #include <imgui.h>
 #include <unordered_map>
 #include <set>
+#include <filesystem>
 
 /// This class is used to manage image data, including loading, decompressing, and manipulating pixel values.
 /// /// The Image Data is stored as RGBAImageI from FileReader library
@@ -50,7 +51,7 @@ private:
 	int channels;
 
 	/// Path is stored for lazy loading of the image data.
-	std::string path; //file path of the image entry
+	std::filesystem::path path; //file path of the image entry
 
 	/// container for compressing and decompressing image data to save memory.
 	std::vector<uint8_t> imageDataCompressed;
@@ -165,7 +166,9 @@ public:
 
 
 	//<--Getters for metadata-->
-	std::string GetFilePath() const;
+	std::string GetFilePathString() const;
+	std::filesystem::path GetFilePath_path() const;
+	std::filesystem::path GetFileName() const;
 
 	int GetWidth() const;
 	int GetHeight() const;
@@ -246,7 +249,8 @@ public:
 
 	std::shared_ptr<ImageEntry> GetImage(int id);
 
-	std::string GetName(int id) const;
+	std::string GetPath(int id) const;
+	std::filesystem::path GetPath_path(int id) const;
 	ImVec2 GetDim(int id) const;
 private:
 	//WIP
