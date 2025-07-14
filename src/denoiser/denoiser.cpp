@@ -114,16 +114,22 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 				unsigned int postemp = PosCompose(actX, actY, width);
 				PixelRGBA srcpixel = src[postemp];
 
+#if 0
+				{
+
 				//Normalize the distance
 
 				double xd = ((double)actX - xPos) / width;
 				double yd = ((double)actY - yPos) / height;
-
 				double rangeDist = xd * xd + yd * yd;
+
+				double rDiffNorm = ((double)pinit.r - srcpixel.r) / 255.0;
+				double gDiffNorm = ((double)pinit.g - srcpixel.g) / 255.0;
+				double bDiffNorm = ((double)pinit.b - srcpixel.b) / 255.0;
+
 				double DistAttenuation = Bilateral::RangeAttenuation(rangeDist, inverseSpatial);
 
 				// Calculate the weight for each channel
-				{
 					// Normalize intensity
 					double rw = Bilateral::IntensityAttenuation((pinit.r - srcpixel.r) * (pinit.r - srcpixel.r) / 65025.0, inverseIntensity) * DistAttenuation;
 					double gw = Bilateral::IntensityAttenuation((pinit.g - srcpixel.g) * (pinit.g - srcpixel.g) / 65025.0, inverseIntensity) * DistAttenuation;
@@ -137,11 +143,59 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 					sumGw += gw;
 					sumBw += bw;
 				}
+#else
+				{
+
+					MathVector5 pinitVec(
+						(double)pinit.r / 255.0 * inverseIntensity,
+						(double)pinit.g / 255.0 * inverseIntensity,
+						(double)pinit.b / 255.0 * inverseIntensity,
+						xPos / (double)width * inverseSpatial,
+						yPos / (double)height * inverseSpatial
+					);
+					MathVector5 srcVec(
+						(double)srcpixel.r / 255.0 * inverseIntensity,
+						(double)srcpixel.g / 255.0 * inverseIntensity,
+						(double)srcpixel.b / 255.0 * inverseIntensity,
+						actX / (double)width * inverseSpatial,
+						actY / (double)height * inverseSpatial
+					);
+					//MathVector<double, 5> pinitVec(
+					//	(double)pinit.r / 255.0 * inverseIntensity,
+					//	(double)pinit.g / 255.0 * inverseIntensity,
+					//	(double)pinit.b / 255.0 * inverseIntensity,
+					//	xPos / width * inverseSpatial,
+					//	yPos / height * inverseSpatial
+					//);
+					//
+					//MathVector<double, 5> srcVec(
+					//	(double)srcpixel.r / 255.0 * inverseIntensity,
+					//	(double)srcpixel.g / 255.0 * inverseIntensity,
+					//	(double)srcpixel.b / 255.0 * inverseIntensity,
+					//	actX / width * inverseSpatial,
+					//	actY / height * inverseSpatial
+					//);
+
+					double omega = Bilateral::VectorAttenuation(pinitVec, srcVec, 1);
+
+					sumR += srcpixel.r * omega;
+					sumG += srcpixel.g * omega;
+					sumB += srcpixel.b * omega;
+
+					sumRw += omega;
+					sumGw += omega;
+					sumBw += omega;
+				}
+#endif
 
 			}
 
 		}
-		if (pixelnum % 1000) printf("Filtering pixel %d", pixelnum);
+#ifdef DEBUG
+
+		if (pixelnum % 100000 == 0) printf("Filtering pixel %d \n", pixelnum);
+#endif // DEBUG
+
 		denoisedimage[pixelnum].r = static_cast<uint8_t>(sumR / sumRw);
 		denoisedimage[pixelnum].g = static_cast<uint8_t>(sumG / sumGw);
 		denoisedimage[pixelnum].b = static_cast<uint8_t>(sumB / sumBw);

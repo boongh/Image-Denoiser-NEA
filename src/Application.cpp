@@ -624,10 +624,21 @@ int Application::Run() {
 
                             }).detach();
                         }
+
+
+                        static float bilateralStrengthSpatial = 1;
+                        static float bilateralStrengthIntensity = 1;
+						static int halfwidth = 5;
+						static int halfheight = 5;
+
                         if (ImGui::Button("Bilateral Filter")) {
                             auto currentSelection = selection;
                             ImVec2 currentDim = dim;
-                            std::jthread([this, currentSelection, currentDim]() {
+                            float ss = bilateralStrengthSpatial;
+							float si = bilateralStrengthIntensity;
+							int w = halfwidth;
+							int h = halfheight;
+                            std::jthread([this, currentSelection, currentDim, ss, si, w, h]() {
 
 #ifdef DEBUG
                                 auto timer = std::chrono::high_resolution_clock();
@@ -638,8 +649,8 @@ int Application::Run() {
                                     std::vector<PixelRGBA> denoised = Denoiser::BilateralFilter(
                                         currentSelection->ReadImageData(),
                                         static_cast<unsigned int>(currentDim.x),
-                                        static_cast<unsigned int>(currentDim.y), 5, 5, 
-                                        0.3, 0.3);
+                                        static_cast<unsigned int>(currentDim.y), w, h, 
+                                        ss, si);
                                     std::string name = std::string(currentSelection->GetFilePath() + "Copy");
 
                                     Manager.ImportFromSpan(
@@ -658,7 +669,18 @@ int Application::Run() {
 
                                 }).detach();
                         }
-                        ImGui::SameLine();
+
+                        ImGui::InputFloat("Strength Spatial", &bilateralStrengthSpatial, 1, 5);
+                        ImGui::InputFloat("Strength Intensity", &bilateralStrengthIntensity, 1, 5);
+
+						ImGui::BeginChild("HalfHeight", ImVec2(600, 0), ImGuiChildFlags_Borders | ImGuiChildFlags_ResizeX | ImGuiChildFlags_ResizeY);
+
+                        ImGui::InputInt("Half Width", &halfwidth, 1, 5);
+						ImGui::SameLine();
+                        ImGui::InputInt("Half Height", &halfheight, 1, 5);
+
+						ImGui::EndChild();
+
                         auto renderer = Manager.GetRenderer(selection);
                         renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
                     }
