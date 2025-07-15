@@ -147,18 +147,18 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 				{
 
 					MathVector5 pinitVec(
-						(double)pinit.r / 255.0 * inverseIntensity,
-						(double)pinit.g / 255.0 * inverseIntensity,
-						(double)pinit.b / 255.0 * inverseIntensity,
-						xPos / (double)width * inverseSpatial,
-						yPos / (double)height * inverseSpatial
+						(float)pinit.r / 255.0 * inverseIntensity,
+						(float)pinit.g / 255.0 * inverseIntensity,
+						(float)pinit.b / 255.0 * inverseIntensity,
+						xPos / (float)width * inverseSpatial,
+						yPos / (float)height * inverseSpatial
 					);
 					MathVector5 srcVec(
-						(double)srcpixel.r / 255.0 * inverseIntensity,
-						(double)srcpixel.g / 255.0 * inverseIntensity,
-						(double)srcpixel.b / 255.0 * inverseIntensity,
-						actX / (double)width * inverseSpatial,
-						actY / (double)height * inverseSpatial
+						(float)srcpixel.r / 255.0 * inverseIntensity,
+						(float)srcpixel.g / 255.0 * inverseIntensity,
+						(float)srcpixel.b / 255.0 * inverseIntensity,
+						actX / (float)width * inverseSpatial,
+						actY / (float)height * inverseSpatial
 					);
 					//MathVector<double, 5> pinitVec(
 					//	(double)pinit.r / 255.0 * inverseIntensity,

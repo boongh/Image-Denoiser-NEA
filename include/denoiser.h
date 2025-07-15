@@ -26,13 +26,11 @@ public:
 		unsigned int width, unsigned int height,
 		int halfWidth, int halfHeight, double strnSpatial, double strnIntensity);
 
-	/// <summary>
 	template<typename T>
     class MathVector5 {
     private:
         int m_size = 5;
     public:
-        // Members can be of different types
         T m0;
         T m1;
         T m2;
@@ -112,6 +110,7 @@ public:
             );
         }
     };
+
 //
 //	/// Small vector class, may change for Eigen instead
 //	/// </summary>
@@ -243,6 +242,6 @@ public:
 
 	template <typename T>
 	static inline T lerp(T a, T b, double t) {
-		return static_cast<T>((1 - t) * a + b * t);
+		return static_cast<T>((1 - t) * (double)a + (double)b * t);
 	};
 };

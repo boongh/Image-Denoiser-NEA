@@ -119,11 +119,7 @@ public:
     template <typename ... Args>
 	bool ImGuiCheckShortcuts(Args &&...args);
 
-#ifdef DEBUG
-
     void DEBUGRUN(const char* infiles);
-
-#endif // DEBUG
 
     void ImportFiles(std::span<std::string> paths);
 private:
