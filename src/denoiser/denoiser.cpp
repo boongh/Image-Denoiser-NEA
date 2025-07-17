@@ -1,6 +1,6 @@
 #include "denoiser.h"
-#include <omp.h>
-
+#include <unordered_map>
+#include <Eigen/Dense>
 
 std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strn)
 {
@@ -88,6 +88,24 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 	double inverseSpatial = 1.0 / strnSpatial;
 	double inverseIntensity = 1.0 / strnIntensity;
 
+
+	//Cache construction for distance attenuation
+	std::unordered_map<int, double> cacheDistAtten;
+
+	for (int x = 0; x <= halfWidth; x++) {
+		for(int y = 0; y <= halfHeight; y++) {
+			int dist = x * x + y * y;
+			if (cacheDistAtten.find(dist) == cacheDistAtten.end()) {
+				cacheDistAtten[dist] = Bilateral::RangeAttenuation(dist, inverseSpatial);
+			}
+		}
+	}
+
+	constexpr double INVERSECOLOR = 1 / 255.0;
+	double INVERSEWIDTH = 1 / width;
+	double INVERSEHEIGHT = 1 / height;
+	int loopCount = 0;
+
 	for (int pixelnum = 0; pixelnum < src.size(); pixelnum++) {
 		int xPos = 0;
 		int yPos = 0;
@@ -96,14 +114,22 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 		double sumG = 0;
 		double sumB = 0;
 
-		double sumRw = 0;
-		double sumGw = 0;
-		double sumBw = 0;
+
+		double sumW = 0;
+
+		PixelRGBA pinit = src[pixelnum];
+
+		MathVector<float, 3> pinitVecRGB(
+			(float)pinit.r * INVERSECOLOR * inverseIntensity,
+			(float)pinit.g * INVERSECOLOR * inverseIntensity,
+			(float)pinit.b * INVERSECOLOR * inverseIntensity
+		);
 
 		// Decompose pixel position
 		PosDecompose(pixelnum, width, height, &xPos, &yPos);
-		PixelRGBA pinit = src[pixelnum];
 		for (int x = -halfWidth; x <= halfWidth; x++) {
+
+			double xsquared = x * x;
 			for (int y = -halfHeight; y <= halfHeight; y++) {
 				int actX = x + xPos;
 				int actY = y + yPos;
@@ -114,13 +140,15 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 				unsigned int postemp = PosCompose(actX, actY, width);
 				PixelRGBA srcpixel = src[postemp];
 
+				int dist = x * x + y * y;
+				double distanceFactor = cacheDistAtten[dist];
 #if 0
 				{
 
 				//Normalize the distance
 
-				double xd = ((double)actX - xPos) / width;
-				double yd = ((double)actY - yPos) / height;
+				double xd = x / width;
+				double yd = y / height;
 				double rangeDist = xd * xd + yd * yd;
 
 				double rDiffNorm = ((double)pinit.r - srcpixel.r) / 255.0;
@@ -146,59 +174,35 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 #else
 				{
 
-					MathVector5 pinitVec(
-						(float)pinit.r / 255.0 * inverseIntensity,
-						(float)pinit.g / 255.0 * inverseIntensity,
-						(float)pinit.b / 255.0 * inverseIntensity,
-						xPos / (float)width * inverseSpatial,
-						yPos / (float)height * inverseSpatial
+					MathVector<float, 3> srcVecRGB(
+						(float)srcpixel.r * INVERSECOLOR * inverseIntensity,
+						(float)srcpixel.g * INVERSECOLOR * inverseIntensity,
+						(float)srcpixel.b * INVERSECOLOR * inverseIntensity
 					);
-					MathVector5 srcVec(
-						(float)srcpixel.r / 255.0 * inverseIntensity,
-						(float)srcpixel.g / 255.0 * inverseIntensity,
-						(float)srcpixel.b / 255.0 * inverseIntensity,
-						actX / (float)width * inverseSpatial,
-						actY / (float)height * inverseSpatial
-					);
-					//MathVector<double, 5> pinitVec(
-					//	(double)pinit.r / 255.0 * inverseIntensity,
-					//	(double)pinit.g / 255.0 * inverseIntensity,
-					//	(double)pinit.b / 255.0 * inverseIntensity,
-					//	xPos / width * inverseSpatial,
-					//	yPos / height * inverseSpatial
-					//);
-					//
-					//MathVector<double, 5> srcVec(
-					//	(double)srcpixel.r / 255.0 * inverseIntensity,
-					//	(double)srcpixel.g / 255.0 * inverseIntensity,
-					//	(double)srcpixel.b / 255.0 * inverseIntensity,
-					//	actX / width * inverseSpatial,
-					//	actY / height * inverseSpatial
-					//);
 
-					double omega = Bilateral::VectorAttenuation(pinitVec, srcVec, 1);
+					double omega = Bilateral::VectorAttenuation(pinitVecRGB, srcVecRGB, 1) * distanceFactor;
 
 					sumR += srcpixel.r * omega;
 					sumG += srcpixel.g * omega;
 					sumB += srcpixel.b * omega;
 
-					sumRw += omega;
-					sumGw += omega;
-					sumBw += omega;
+					sumW += omega;
+
+					loopCount++;
+
 				}
 #endif
-
 			}
 
 		}
 #ifdef DEBUG
 
-		if (pixelnum % 100000 == 0) printf("Filtering pixel %d \n", pixelnum);
+		if (loopCount % 100000 == 0) std::println("{}th loop \n", loopCount);
 #endif // DEBUG
 
-		denoisedimage[pixelnum].r = static_cast<uint8_t>(sumR / sumRw);
-		denoisedimage[pixelnum].g = static_cast<uint8_t>(sumG / sumGw);
-		denoisedimage[pixelnum].b = static_cast<uint8_t>(sumB / sumBw);
+		denoisedimage[pixelnum].r = static_cast<uint8_t>(sumR / sumW);
+		denoisedimage[pixelnum].g = static_cast<uint8_t>(sumG / sumW);
+		denoisedimage[pixelnum].b = static_cast<uint8_t>(sumB / sumW);
 	}
 
 	return denoisedimage;
