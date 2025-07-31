@@ -171,6 +171,7 @@
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp" />
     <ClCompile Include="Dependencies\tinyfiledialogs\tinyfiledialogs.c" />
+    <ClCompile Include="src\denoiser\FastBilateralApprox.cpp" />
     <ClCompile Include="src\imagemanagement\ImageManager.cpp" />
     <ClCompile Include="src\imagemanagement\ImageEntry.cpp" />
     <ClCompile Include="src\imagemanagement\ImageRenderer.cpp" />

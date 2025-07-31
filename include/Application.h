@@ -109,6 +109,37 @@ public:
 class Application {
 public:
 
+    struct FilterParameters {
+        struct BilateralFilterParameters {
+            float sigmaSpatial = 0.2f;
+            float sigmaColor = 0.2f;
+            int kernelWidth = 5;
+            int kernelHeight = 5;
+            void Reset() {
+                sigmaSpatial = 1.0f;
+                sigmaColor = 0.1f;
+                kernelWidth = 5;
+                kernelHeight = 5;
+            }
+        };
+
+        struct SmoothFilterParameters {
+            float strength = 1.0f;
+            int kernelWidth = 5;
+            int kernelHeight = 5;
+            void Reset() {
+                strength = 1.0f;
+                kernelWidth = 5;
+                kernelHeight = 5;
+			}
+        };
+
+		BilateralFilterParameters BFParameter;
+		SmoothFilterParameters SFParameter;
+    };
+
+	FilterParameters filterParameters;
+
     //Format filter
     const static char* formatfilter[];
 	const int formatfiltercount = 3;
@@ -122,14 +153,25 @@ public:
     void DEBUGRUN(const char* infiles);
 
     void ImportFiles(std::span<std::string> paths);
+
+    void SmoothFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends);
+    void BilateralFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends);
+
+    std::filesystem::path ExtendsFileName(std::filesystem::path file, std::string extends);
 private:
 
     int InitWindow(GLFWwindow*& windowRet);
     static void glfw_error_callback(int error, const char* description);
     void BuildDockLayout();
-    int OpenImages(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
+
+    int ImageSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
 
     void DisplayMenu();
+    void SaveImageWindow();
+    void DisplayDenoiseParamMenu();
+	void DisplayImageList(std::shared_ptr<ImageEntry>& selection);
+
+    void ForAllSelectedImage(void (*func) (std::shared_ptr<ImageEntry>));
 
     ImVec4 clearColor;
     ImGuiID g_viewport_id;
@@ -146,8 +188,8 @@ private:
 
     ImageManager Manager;
 
-    std::shared_ptr<ImageEntry> selection = nullptr;
-    std::shared_ptr<ImageEntry> prevselection = nullptr;
+    std::shared_ptr<ImageEntry> currselection = nullptr;
+    ExampleSelectionWithDeletion Multiselection;
     
     //Menu functions for access outside of menu
     void LoadAllImages();

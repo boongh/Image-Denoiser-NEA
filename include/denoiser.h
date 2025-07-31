@@ -28,10 +28,22 @@ public:
 		unsigned int width, unsigned int height,
 		int halfWidth, int halfHeight, double strnSpatial, double strnIntensity);
 
+    static std::vector<PixelRGBA> FastBilateralFilterApproximation(std::span<const PixelRGBA> src,
+        unsigned int width, unsigned int height,
+        int halfWidth, int halfHeight, double strnSpatial, double strnIntensity, double threashold);
+
+    static std::vector<PixelRGBA> FastBFApprox2(std::span<const PixelRGBA> src,
+        unsigned int width, unsigned int height,
+        int halfWidth, int halfHeight, double strnSpatial, double strnIntensity);
+
+    static void GaussianBlur(std::span<const PixelRGBA> src,
+        std::span<PixelRGBA>& dst,
+        unsigned int width, unsigned int height,
+		int halfWidth, int halfHeight, double strn);
+
     template<typename T, int size>
     class MathVector {
     private:
-        int m_size = size;
     public:
         std::array<T, size> data;
 
@@ -45,7 +57,7 @@ public:
         }
 
         int GetSize() const {
-            return m_size;
+            return size;
         }
 
 		template<int Bsize>

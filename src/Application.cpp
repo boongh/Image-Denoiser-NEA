@@ -157,7 +157,7 @@ void Application::BuildDockLayout() {
 #endif
 }
 
-int Application::OpenImages(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths) {
+int Application::ImageSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths) {
     // Load image with 4 channels
     const char* file = OpenFileDialogue("Select an Image", formatfilter, filtercount);
 
@@ -209,11 +209,289 @@ void Application::DisplayMenu() {
     }
 }
 
-void Application::LoadAllImages()
-{
+void Application::SaveImageWindow() {
+
+
+}
+
+void Application::DisplayDenoiseParamMenu() {
+
+#pragma region SF
+    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
+    if (ImGui::Button("Smooth LF", ImVec2(0, 0)) && currselection != nullptr)
+        SmoothFilter(currselection, " [Copy]");
+    ImGui::InputFloat("Strength##SF", &filterParameters.SFParameter.strength, 0.02f, 0.2f);
+    ImGui::PopItemWidth();
+
+    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+
+    ImGui::InputInt("HalfWidth##SF", &filterParameters.SFParameter.kernelWidth, 1, 5);
+    ImGui::InputInt("HalfHeight##SF", &filterParameters.SFParameter.kernelHeight, 1, 5);
+
+    ImGui::PopItemWidth();
+
+#pragma endregion
+
+#pragma region BF
+
+    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
+    if (ImGui::Button("Bilateral Filter"))
+        BilateralFilter(currselection, " [Copy]");
+
+    ImGui::InputFloat("Strength Spatial##BF", &filterParameters.BFParameter.sigmaSpatial, 1, 5);
+    ImGui::InputFloat("Strength Intensity##BF", &filterParameters.BFParameter.sigmaColor, 1, 5);
+    ImGui::PopItemWidth();
+
+    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+    ImGui::InputInt("Half Width##BF", &filterParameters.BFParameter.kernelWidth, 1, 5);
+    ImGui::SameLine();
+    ImGui::InputInt("Half Height##BF", &filterParameters.BFParameter.kernelHeight, 1, 5);
+    ImGui::PopItemWidth();
+
+#pragma endregion
+}
+
+void Application::ForAllSelectedImage(void(*func)(std::shared_ptr<ImageEntry>)) {
+    for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
+        if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
+            func(Manager.GetImage(idx));
+        }
+    }
+}
+
+void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
+    // Options
+    enum WidgetType { WidgetType_Selectable, WidgetType_TreeNode };
+    static bool use_clipper = true;
+    static bool use_deletion = true;
+    static bool use_drag_drop = true;
+    static bool show_in_table = false;
+    static bool show_color_button = true;
+    static ImGuiMultiSelectFlags flags = ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_BoxSelect1d;
+    static WidgetType widget_type = WidgetType_Selectable;
+    static bool want_delete;
+    static std::set<std::shared_ptr<ImageEntry>> deletionSet;
+
+    // Use default selection.Adapter: Pass index to SetNextItemSelectionUserData(), store index in Selection
+    static ImVector<int> items;
+    static int items_next_id = 0;
+    
+    static bool request_deletion_from_menu = false; // Queue deletion triggered from context menu
+
+    ImGui::Text("Selection size: %d/%d", Multiselection.Size, items.Size);
+
+    const float items_height = (widget_type == WidgetType_TreeNode) ? ImGui::GetTextLineHeight() : ImGui::GetTextLineHeightWithSpacing();
+    ImGui::SetNextWindowContentSize(ImVec2(0.0f, items.Size * items_height));
+    if (ImGui::BeginChild("##Basket", ImVec2(-FLT_MIN, 0), ImGuiChildFlags_FrameStyle))
+    {
+        ImVec2 color_button_sz(ImGui::GetFontSize(), ImGui::GetFontSize());
+        if (widget_type == WidgetType_TreeNode)
+            ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
+
+        ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, Multiselection.Size, items.Size);
+        Multiselection.ApplyRequests(ms_io);
+
+        if (deletionSet.size() > 0) {
+            Manager.UnloadImage(deletionSet);
+            deletionSet.clear();
+        }
+
+        if (Manager.GetImageCount() != items.Size) {
+            items.clear();
+            items_next_id = 0;
+            for (int n = 0; n < Manager.GetImageCount(); n++) {
+                items.push_back(items_next_id++);
+            }
+        }
+
+        want_delete = (ImGui::Shortcut(ImGuiKey_Delete, ImGuiInputFlags_Repeat) && (Multiselection.Size > 0)) || request_deletion_from_menu;
+        const int item_curr_idx_to_focus = want_delete ? Multiselection.ApplyDeletionPreLoop(ms_io, items.Size) : -1;
+        request_deletion_from_menu = false;
+
+        if (show_in_table)
+        {
+            if (widget_type == WidgetType_TreeNode)
+                ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0.0f, 0.0f));
+            ImGui::BeginTable("##Split", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_NoPadOuterX);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch, 0.70f);
+            ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch, 0.30f);
+            //ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacingY, 0.0f);
+        }
+
+        ImGuiListClipper clipper;
+        if (use_clipper)
+        {
+            clipper.Begin(items.Size);
+            if (item_curr_idx_to_focus != -1)
+                clipper.IncludeItemByIndex(item_curr_idx_to_focus); // Ensure focused item is not clipped.
+            if (ms_io->RangeSrcItem != -1)
+                clipper.IncludeItemByIndex((int)ms_io->RangeSrcItem); // Ensure RangeSrc item is not clipped.
+        }
+
+        while (!use_clipper || clipper.Step())
+        {
+            const int item_begin = use_clipper ? clipper.DisplayStart : 0;
+            const int item_end = use_clipper ? clipper.DisplayEnd : items.Size;
+            for (int n = item_begin; n < item_end; n++)
+            {
+                if (show_in_table)
+                    ImGui::TableNextColumn();
+
+                const int item_id = items[n];
+                const char* item_category = "";
+                char label[256];
+
+                std::filesystem::path item_path = Manager.GetPath_path(n);
+                std::filesystem::path filename = item_path.filename();
+                std::filesystem::path parentDir = item_path.parent_path();
+
+                std::string fileIdentifier = item_path.parent_path().filename().string() + "/" + item_path.filename().string();
+
+                sprintf_s(label, "%s", fileIdentifier.c_str());
+
+                // IMPORTANT: for deletion refocus to work we need object ID to be stable,
+                // aka not depend on their index in the list. Here we use our persistent item_id
+                // instead of index to build a unique ID that will persist.
+                // (If we used PushID(index) instead, focus wouldn't be restored correctly after deletion).
+                ImGui::PushID(item_id);
+
+                // Emit a color button, to test that Shift+LeftArrow landing on an item that is not part
+                // of the selection scope doesn't erroneously alter our selection.
+                if (show_color_button)
+                {
+                    ImU32 dummy_col = (ImU32)((unsigned int)n * 0xC250B74B) | IM_COL32_A_MASK;
+                    ImGui::ColorButton("##", ImColor(dummy_col), ImGuiColorEditFlags_NoTooltip, color_button_sz);
+                    ImGui::SameLine();
+                }
+
+                // Submit item
+                bool item_is_selected = Multiselection.Contains((ImGuiID)n);
+                bool item_is_open = false;
+                ImGui::SetNextItemSelectionUserData(n);
+                if (widget_type == WidgetType_Selectable)
+                {
+                    ImGui::Selectable(label, item_is_selected, ImGuiSelectableFlags_None);
+                }
+                else if (widget_type == WidgetType_TreeNode)
+                {
+                    ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
+                    if (item_is_selected)
+                        tree_node_flags |= ImGuiTreeNodeFlags_Selected;
+                    item_is_open = ImGui::TreeNodeEx(label, tree_node_flags);
+                }
+
+                // Focus (for after deletion)
+                if (item_curr_idx_to_focus == n)
+                    ImGui::SetKeyboardFocusHere(-1);
+
+                // Drag and Drop
+                if (use_drag_drop && ImGui::BeginDragDropSource())
+                {
+                    // Create payload with full selection OR single unselected item.
+                    // (the later is only possible when using ImGuiMultiSelectFlags_SelectOnClickRelease)
+                    if (ImGui::GetDragDropPayload() == NULL)
+                    {
+                        ImVector<int> payload_items;
+                        void* it = NULL;
+                        ImGuiID id = 0;
+                        if (!item_is_selected)
+                            payload_items.push_back(item_id);
+                        else
+                            while (Multiselection.GetNextSelectedItem(&it, &id))
+                                payload_items.push_back((int)id);
+                        ImGui::SetDragDropPayload("MULTISELECT_DEMO_ITEMS", payload_items.Data, (size_t)payload_items.size_in_bytes());
+                    }
+
+                    // Display payload content in tooltip
+                    const ImGuiPayload* payload = ImGui::GetDragDropPayload();
+                    const int* payload_items = (int*)payload->Data;
+                    const int payload_count = (int)payload->DataSize / (int)sizeof(int);
+                    if (payload_count == 1)
+                        ImGui::Text("Object %05d: %s", payload_items[0], "");
+                    else
+                        ImGui::Text("Dragging %d objects", payload_count);
+
+                    ImGui::EndDragDropSource();
+                }
+
+                if (widget_type == WidgetType_TreeNode && item_is_open)
+                    ImGui::TreePop();
+
+                // Right-click: context menu
+                if (ImGui::BeginPopupContextItem())
+                {
+                    ImGui::BeginDisabled(!use_deletion || Multiselection.Size == 0);
+                    sprintf_s(label, "Delete %d item(s)###DeleteSelected", Multiselection.Size);
+                    if (ImGui::Selectable(label))
+                        request_deletion_from_menu = true;
+                    ImGui::EndDisabled();
+                    ImGui::Selectable("Close");
+                    ImGui::EndPopup();
+                }
+
+                // Demo content within a table
+                if (show_in_table)
+                {
+                    ImGui::TableNextColumn();
+                    ImGui::SetNextItemWidth(-FLT_MIN);
+                    ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
+                    ImGui::InputText("###NoLabel", (char*)(void*)item_category, strlen(item_category), ImGuiInputTextFlags_ReadOnly);
+                    ImGui::PopStyleVar();
+                }
+
+                ImGui::PopID();
+            }
+            if (!use_clipper)
+                break;
+        }
+
+        if (show_in_table)
+        {
+            ImGui::EndTable();
+            if (widget_type == WidgetType_TreeNode)
+                ImGui::PopStyleVar();
+        }
+
+        // Apply multi-select requests
+        ms_io = ImGui::EndMultiSelect();
+        Multiselection.ApplyRequests(ms_io);
+        if (want_delete) {
+            ForAllSelectedImage([](std::shared_ptr<ImageEntry> image) { deletionSet.insert(image); });
+            Multiselection.ApplyDeletionPostLoop(ms_io, items, item_curr_idx_to_focus);
+        }
+
+
+        //Batch load
+        if (ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_L)) {
+            ForAllSelectedImage([](std::shared_ptr<ImageEntry> image) {
+                std::thread thread([image]() {
+                    if (image) {
+                        if (image->LoadImage() != 0)
+                            std::printf("Fail to load image file");
+                    }
+                });
+                thread.detach();
+			});
+
+            for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
+                if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
+                }
+            }
+        }
+
+        if (widget_type == WidgetType_TreeNode)
+            ImGui::PopStyleVar();
+
+        selection = Manager.GetImage(ms_io->NavIdItem);
+    }
+    ImGui::EndChild();
+
+}
+
+void Application::LoadAllImages() {
 
     std::thread thread([this]() {
-        for (auto image : Manager) {
+        for (auto& image : Manager) {
             if (image->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
                 image->LoadImage();
             }
@@ -223,10 +501,9 @@ void Application::LoadAllImages()
     thread.detach();
 }
 
-void Application::OpenImageFile()
-{
+void Application::OpenImageFile() {
     std::vector<std::string> paths;
-    OpenImages(formatfilter, formatfiltercount, paths);
+    ImageSelection(formatfilter, formatfiltercount, paths);
     ImportFiles(paths);
 }
 
@@ -236,6 +513,8 @@ int Application::Run() {
     InitWindow(window);
 
     ImGuiID g_viewport_id = ImGui::GetMainViewport()->ID;
+
+    std::shared_ptr<ImageEntry> prevselection = nullptr;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -306,111 +585,28 @@ int Application::Run() {
 
         ImGui::BeginChild("ImagePreview", ImVec2(0, 0));
         {
-            if (selection != nullptr) {
-                if (selection->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
+            if (currselection != nullptr) {
+                if (currselection->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
                     ImGui::Text("FAILED TO LOAD IMAGE");
                 }
                 else {
-                    ImGui::LabelText("info", "File path: %s", selection->GetFileName().string().c_str());
-                    ImVec2 dim = ImVec2(selection->GetWidth(), selection->GetHeight());
+                    DisplayDenoiseParamMenu();
+
+                    ImGui::LabelText("info", "File path: %s", currselection->GetFileName().string().c_str());
+                    ImVec2 dim = ImVec2(currselection->GetWidth(), currselection->GetHeight());
                     ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
-                    if (ImGui::Button("Smooth LF", ImVec2(0, 0))) {
-                        auto currentSelection = selection;
-                        ImVec2 currentDim = dim;
-                        std::jthread([this, currentSelection, currentDim]() {
 
-#ifdef DEBUG
-                            auto timer = std::chrono::high_resolution_clock();
-                            auto start = timer.now();
-#endif // DEBUG
-
-                            if (currentSelection != nullptr) {
-                                std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
-                                    currentSelection->ReadImageData(),
-                                    static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y), 5, 5, 0.3);
-                                std::string name = std::string(currentSelection->GetFilePathString() + "Copy");
-
-                                Manager.ImportFromSpan(
-                                    denoised,
-                                    static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y),
-                                    name);
-                            }
-
-#ifdef DEBUG
-                            auto end = timer.now();
-                            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-                            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
-#endif // DEBUG
-
-                            }).detach();
-                    }
-
-
-                    static float bilateralStrengthSpatial = 1;
-                    static float bilateralStrengthIntensity = 1;
-                    static int halfwidth = 5;
-                    static int halfheight = 5;
-
-                    if (ImGui::Button("Bilateral Filter")) {
-                        auto currentSelection = selection;
-                        ImVec2 currentDim = dim;
-                        float ss = bilateralStrengthSpatial;
-                        float si = bilateralStrengthIntensity;
-                        int w = halfwidth;
-                        int h = halfheight;
-                        std::jthread([this, currentSelection, currentDim, ss, si, w, h]() {
-
-#ifdef DEBUG
-                            auto timer = std::chrono::high_resolution_clock();
-                            auto start = timer.now();
-#endif // DEBUG
-
-                            if (currentSelection != nullptr) {
-                                std::vector<PixelRGBA> denoised = Denoiser::BilateralFilter(
-                                    currentSelection->ReadImageData(),
-                                    static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y), w, h,
-                                    ss, si);
-                                std::string name = std::string(currentSelection->GetFilePathString() + "Copy");
-
-                                Manager.ImportFromSpan(
-                                    denoised,
-                                    static_cast<unsigned int>(currentDim.x),
-                                    static_cast<unsigned int>(currentDim.y),
-                                    name);
-                            }
-
-#ifdef DEBUG
-                            auto end = timer.now();
-                            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-                            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
-#endif // DEBUG
-
-                            }).detach();
-                    }
-
-					ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
-                    ImGui::InputFloat("Strength Spatial", &bilateralStrengthSpatial, 1, 5);
-                    ImGui::InputFloat("Strength Intensity", &bilateralStrengthIntensity, 1, 5);
-					ImGui::PopItemWidth();
-
-                    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
-                    ImGui::InputInt("Half Width", &halfwidth, 1, 5);
-                    ImGui::SameLine();
-                    ImGui::InputInt("Half Height", &halfheight, 1, 5);
-                    ImGui::PopItemWidth();
-                    auto renderer = Manager.GetRenderer(selection);
+					ImGui::BeginChild("ImageRenderer", ImVec2(0, 0), ImGuiChildFlags_Borders);
+                    auto renderer = Manager.GetRenderer(currselection);
                     renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
+					ImGui::EndChild();
                 }
             }
         }
         ImGui::EndChild();
 
-		ImGui::End();
+        ImGui::End();
+
         {
             ImGui::Begin("ImageListView", nullptr, ImGuiWindowFlags_NoNav);
 
@@ -429,243 +625,12 @@ int Application::Run() {
 				LoadAllImages();
             }
             
-            // Options
-            enum WidgetType { WidgetType_Selectable, WidgetType_TreeNode };
-            static bool use_clipper = true;
-            static bool use_deletion = true;
-            static bool use_drag_drop = true;
-            static bool show_in_table = false;
-            static bool show_color_button = true;
-            static ImGuiMultiSelectFlags flags = ImGuiMultiSelectFlags_ClearOnEscape | ImGuiMultiSelectFlags_BoxSelect1d;
-            static WidgetType widget_type = WidgetType_Selectable;
-            static bool want_delete;
-            static std::set<std::shared_ptr<ImageEntry>> deletionSet;
+			DisplayImageList(currselection);
 
-            // Use default selection.Adapter: Pass index to SetNextItemSelectionUserData(), store index in Selection
-            static ImVector<int> items;
-            static int items_next_id = 0;
-            static ExampleSelectionWithDeletion Multiselection;
-            static bool request_deletion_from_menu = false; // Queue deletion triggered from context menu
-
-            ImGui::Text("Selection size: %d/%d", Multiselection.Size, items.Size);
-
-            const float items_height = (widget_type == WidgetType_TreeNode) ? ImGui::GetTextLineHeight() : ImGui::GetTextLineHeightWithSpacing();
-            ImGui::SetNextWindowContentSize(ImVec2(0.0f, items.Size * items_height));
-            if (ImGui::BeginChild("##Basket", ImVec2(-FLT_MIN, 0), ImGuiChildFlags_FrameStyle))
-            {
-                ImVec2 color_button_sz(ImGui::GetFontSize(), ImGui::GetFontSize());
-                if (widget_type == WidgetType_TreeNode)
-                    ImGui::PushStyleVarY(ImGuiStyleVar_ItemSpacing, 0.0f);
-
-                ImGuiMultiSelectIO* ms_io = ImGui::BeginMultiSelect(flags, Multiselection.Size, items.Size);
-                Multiselection.ApplyRequests(ms_io);
-
-                if (deletionSet.size() > 0) {
-                    Manager.UnloadImage(deletionSet);
-					deletionSet.clear();
-                }
-
-                if (Manager.GetImageCount() != items.Size) {
-                    items.clear();
-                    items_next_id = 0;
-                    for (int n = 0; n < Manager.GetImageCount(); n++) {
-                        items.push_back(items_next_id++);
-                    }
-                }
-
-                want_delete = (ImGui::Shortcut(ImGuiKey_Delete, ImGuiInputFlags_Repeat) && (Multiselection.Size > 0)) || request_deletion_from_menu;
-                const int item_curr_idx_to_focus = want_delete ? Multiselection.ApplyDeletionPreLoop(ms_io, items.Size) : -1;
-                request_deletion_from_menu = false;
-
-                if (show_in_table)
-                {
-                    if (widget_type == WidgetType_TreeNode)
-                        ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, ImVec2(0.0f, 0.0f));
-                    ImGui::BeginTable("##Split", 2, ImGuiTableFlags_Resizable | ImGuiTableFlags_NoSavedSettings | ImGuiTableFlags_NoPadOuterX);
-                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch, 0.70f);
-                    ImGui::TableSetupColumn("", ImGuiTableColumnFlags_WidthStretch, 0.30f);
-                    //ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacingY, 0.0f);
-                }
-
-                ImGuiListClipper clipper;
-                if (use_clipper)
-                {
-                    clipper.Begin(items.Size);
-                    if (item_curr_idx_to_focus != -1)
-                        clipper.IncludeItemByIndex(item_curr_idx_to_focus); // Ensure focused item is not clipped.
-                    if (ms_io->RangeSrcItem != -1)
-                        clipper.IncludeItemByIndex((int)ms_io->RangeSrcItem); // Ensure RangeSrc item is not clipped.
-                }
-
-                while (!use_clipper || clipper.Step())
-                {
-                    const int item_begin = use_clipper ? clipper.DisplayStart : 0;
-                    const int item_end = use_clipper ? clipper.DisplayEnd : items.Size;
-                    for (int n = item_begin; n < item_end; n++)
-                    {
-                        if (show_in_table)
-                            ImGui::TableNextColumn();
-
-                        const int item_id = items[n];
-                        const char* item_category = "";
-                        char label[256];
-
-						std::filesystem::path item_path = Manager.GetPath_path(n);
-						std::filesystem::path filename = item_path.filename();
-						std::filesystem::path parentDir = item_path.parent_path();
-
-						std::string fileIdentifier = item_path.parent_path().filename().string() + "/" + item_path.filename().string();
-
-                        sprintf_s(label, "%s", fileIdentifier.c_str());
-
-                        // IMPORTANT: for deletion refocus to work we need object ID to be stable,
-                        // aka not depend on their index in the list. Here we use our persistent item_id
-                        // instead of index to build a unique ID that will persist.
-                        // (If we used PushID(index) instead, focus wouldn't be restored correctly after deletion).
-                        ImGui::PushID(item_id);
-
-                        // Emit a color button, to test that Shift+LeftArrow landing on an item that is not part
-                        // of the selection scope doesn't erroneously alter our selection.
-                        if (show_color_button)
-                        {
-                            ImU32 dummy_col = (ImU32)((unsigned int)n * 0xC250B74B) | IM_COL32_A_MASK;
-                            ImGui::ColorButton("##", ImColor(dummy_col), ImGuiColorEditFlags_NoTooltip, color_button_sz);
-                            ImGui::SameLine();
-                        }
-
-                        // Submit item
-                        bool item_is_selected = Multiselection.Contains((ImGuiID)n);
-                        bool item_is_open = false;
-                        ImGui::SetNextItemSelectionUserData(n);
-                        if (widget_type == WidgetType_Selectable)
-                        {
-                            ImGui::Selectable(label, item_is_selected, ImGuiSelectableFlags_None);
-                        }
-                        else if (widget_type == WidgetType_TreeNode)
-                        {
-                            ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_OpenOnDoubleClick;
-                            if (item_is_selected)
-                                tree_node_flags |= ImGuiTreeNodeFlags_Selected;
-                            item_is_open = ImGui::TreeNodeEx(label, tree_node_flags);
-                        }
-
-                        // Focus (for after deletion)
-                        if (item_curr_idx_to_focus == n)
-                            ImGui::SetKeyboardFocusHere(-1);
-
-                        // Drag and Drop
-                        if (use_drag_drop && ImGui::BeginDragDropSource())
-                        {
-                            // Create payload with full selection OR single unselected item.
-                            // (the later is only possible when using ImGuiMultiSelectFlags_SelectOnClickRelease)
-                            if (ImGui::GetDragDropPayload() == NULL)
-                            {
-                                ImVector<int> payload_items;
-                                void* it = NULL;
-                                ImGuiID id = 0;
-                                if (!item_is_selected)
-                                    payload_items.push_back(item_id);
-                                else
-                                    while (Multiselection.GetNextSelectedItem(&it, &id))
-                                        payload_items.push_back((int)id);
-                                ImGui::SetDragDropPayload("MULTISELECT_DEMO_ITEMS", payload_items.Data, (size_t)payload_items.size_in_bytes());
-                            }
-
-                            // Display payload content in tooltip
-                            const ImGuiPayload* payload = ImGui::GetDragDropPayload();
-                            const int* payload_items = (int*)payload->Data;
-                            const int payload_count = (int)payload->DataSize / (int)sizeof(int);
-                            if (payload_count == 1)
-                                ImGui::Text("Object %05d: %s", payload_items[0], "");
-                            else
-                                ImGui::Text("Dragging %d objects", payload_count);
-
-                            ImGui::EndDragDropSource();
-                        }
-
-                        if (widget_type == WidgetType_TreeNode && item_is_open)
-                            ImGui::TreePop();
-
-                        // Right-click: context menu
-                        if (ImGui::BeginPopupContextItem())
-                        {
-                            ImGui::BeginDisabled(!use_deletion || Multiselection.Size == 0);
-                            sprintf_s(label, "Delete %d item(s)###DeleteSelected", Multiselection.Size);
-                            if (ImGui::Selectable(label))
-                                request_deletion_from_menu = true;
-                            ImGui::EndDisabled();
-                            ImGui::Selectable("Close");
-                            ImGui::EndPopup();
-                        }
-
-                        // Demo content within a table
-                        if (show_in_table)
-                        {
-                            ImGui::TableNextColumn();
-                            ImGui::SetNextItemWidth(-FLT_MIN);
-                            ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(0, 0));
-                            ImGui::InputText("###NoLabel", (char*)(void*)item_category, strlen(item_category), ImGuiInputTextFlags_ReadOnly);
-                            ImGui::PopStyleVar();
-                        }
-
-                        ImGui::PopID();
-                    }
-                    if (!use_clipper)
-                        break;
-                }
-
-                if (show_in_table)
-                {
-                    ImGui::EndTable();
-                    if (widget_type == WidgetType_TreeNode)
-                        ImGui::PopStyleVar();
-                }
-
-                // Apply multi-select requests
-                ms_io = ImGui::EndMultiSelect();
-                Multiselection.ApplyRequests(ms_io);
-                if (want_delete) {
-                    for (int idx = 0; idx < Manager.GetImageCount(); idx++)
-                    {
-                        if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
-							deletionSet.insert(Manager.GetImage(idx));
-                        }
-                    }
-
-                    Multiselection.ApplyDeletionPostLoop(ms_io, items, item_curr_idx_to_focus);
-                }
-
-
-                //Batch load
-                if(ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_L)) {
-                    for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
-                        if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
-                            std::thread thread([this, idx]() {
-                                auto image = Manager.GetImage(idx);
-                                if (image) {
-                                    if (image->LoadImage() != 0) {
-                                        std::printf("Fail to load image file");
-                                    }
-                                }
-							});
-
-							thread.detach();
-                        }
-                    }
-				}
-
-                if (widget_type == WidgetType_TreeNode)
-                    ImGui::PopStyleVar();
-
-                selection = Manager.GetImage(ms_io->NavIdItem); // signed long long to int
-            }
-            ImGui::EndChild();
-            
-
-            if (&*selection != &*prevselection) {
-                if (selection != nullptr) {
-                    if (selection->LoadImage() == 0) 
-                        Manager.CreateRenderer(selection)->LoadGPU();
+            if (currselection != prevselection) {
+                if (currselection != nullptr) {
+                    if (currselection->LoadImage() == 0) 
+                        Manager.CreateRenderer(currselection)->LoadGPU();
                     else {
                         std::printf("Fail to load image file");
                     }
@@ -673,7 +638,7 @@ int Application::Run() {
                 if (prevselection != nullptr) {
                     Manager.DestroyRenderer(prevselection);
                 }
-                prevselection = selection;
+                prevselection = currselection;
             }
 
             ImGui::EndChild();
@@ -742,6 +707,24 @@ void Application::DEBUGRUN(const char* infiles) {
 
     ImportFiles(paths);
 
+    auto image = Manager.GetImage(0);
+    if (image == nullptr) {
+        std::cout << "No image loaded" << std::endl;
+        return;
+	}
+
+    image->LoadImage();
+
+	auto imageData = image->ReadImageData();
+
+    auto denoisedimage = Denoiser::FastBilateralFilterApproximation(imageData, image->GetWidth(), image->GetHeight(), 5, 5, 1, 1, 0.01);
+
+    Manager.ImportFromSpan(
+        denoisedimage,
+        static_cast<unsigned int>(image->GetWidth()),
+        static_cast<unsigned int>(image->GetHeight()),
+		ExtendsFileName(image->GetFilePath_path(), " [Copy]").string());
+
     
 #endif // DEBUG
 
@@ -749,8 +732,75 @@ void Application::DEBUGRUN(const char* infiles) {
 }
 
 void Application::ImportFiles(std::span<std::string> paths) {
-    for (auto path : paths) Manager.ImportFromFile(path);
+    for (auto& path : paths) Manager.ImportFromFile(path);
 }
+
+void Application::SmoothFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends)
+{
+	auto param = filterParameters.SFParameter;
+    std::jthread([this, image, param, nameExtends]() {
+
+#ifdef DEBUG
+        auto timer = std::chrono::high_resolution_clock();
+        auto start = timer.now();
+#endif // DEBUG
+
+        std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
+            image->ReadImageData(),
+            static_cast<unsigned int>(image->GetWidth()),
+            static_cast<unsigned int>(image->GetHeight()),
+            param.kernelWidth, param.kernelHeight, param.strength);
+
+        Manager.ImportFromSpan(
+            denoised,
+            static_cast<unsigned int>(image->GetWidth()),
+            static_cast<unsigned int>(image->GetHeight()),
+            ExtendsFileName(image->GetFilePath_path(), nameExtends).string());
+
+#ifdef DEBUG
+        auto end = timer.now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+#endif // DEBUG
+
+        }).detach();
+}
+
+void Application::BilateralFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends) {
+	auto param = filterParameters.BFParameter;
+    std::jthread([this, image, param, nameExtends]() {
+
+#ifdef DEBUG
+        auto timer = std::chrono::high_resolution_clock();
+        auto start = timer.now();
+#endif // DEBUG
+
+        std::vector<PixelRGBA> denoised = Denoiser::BilateralFilter(
+            image->ReadImageData(),
+            static_cast<unsigned int>(image->GetWidth()),
+            static_cast<unsigned int>(image->GetHeight()),
+            param.kernelWidth, param.kernelHeight,
+            param.sigmaSpatial, param.sigmaColor);
+
+        Manager.ImportFromSpan(
+            denoised,
+            static_cast<unsigned int>(image->GetWidth()),
+            static_cast<unsigned int>(image->GetHeight()),
+            ExtendsFileName(image->GetFilePath_path(), nameExtends).string());
+
+#ifdef DEBUG
+        auto end = timer.now();
+        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+        std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+#endif // DEBUG
+
+        }).detach();
+}
+
+std::filesystem::path Application::ExtendsFileName(std::filesystem::path file, std::string extends) 
+    { return std::filesystem::path(file.parent_path().string() + "/" + file.stem().string() + extends + file.extension().string()); }
 
 
 
