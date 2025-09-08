@@ -26,6 +26,7 @@
 
 #include <algorithm> // For std::max, std::min
 #include <iostream> // For std::cout, std::cerr
+#include <functional> // For std::function
 
 //File read write lib
 
@@ -138,6 +139,15 @@ public:
 		SmoothFilterParameters SFParameter;
     };
 
+    enum RenamingScheme
+    {
+        ReuseName = 1,
+		AppendNumber = 2,
+        AppendDate = 4,
+        AppendTime = 8,
+
+    };
+
 	FilterParameters filterParameters;
 
     //Format filter
@@ -155,6 +165,8 @@ public:
     void ImportFiles(std::span<std::string> paths);
 
     void SmoothFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends);
+    void BatchSmoothFilter();
+
     void BilateralFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends);
 
     std::filesystem::path ExtendsFileName(std::filesystem::path file, std::string extends);
@@ -170,8 +182,9 @@ private:
     void SaveImageWindow();
     void DisplayDenoiseParamMenu();
 	void DisplayImageList(std::shared_ptr<ImageEntry>& selection);
+	void DisplayImageSaveMenu();
 
-    void ForAllSelectedImage(void (*func) (std::shared_ptr<ImageEntry>));
+    void ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func);
 
     ImVec4 clearColor;
     ImGuiID g_viewport_id;

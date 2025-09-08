@@ -157,9 +157,17 @@ int ImageEntry::UnloadImage() {
 
 int ImageEntry::CompressImageData() {
 	std::unique_lock lock(lockstate);
+
+
+	//Already compressed
+	if (status == CompressionStatus::COMPRESSED) return 0;
+
+
+	//Not even loaded in
 	if (status != CompressionStatus::DECOMPRESSED) return -2;
 
-	QOICompress(std::span<uint8_t>(reinterpret_cast<uint8_t*>(imageData.data.data()), width * height * sizeof(PixelRGBA)), imageDataCompressed, width, height, channels);
+
+	if (QOICompress(std::span<uint8_t>(reinterpret_cast<uint8_t*>(imageData.data.data()), width * height * sizeof(PixelRGBA)), imageDataCompressed, width, height, channels) == -1) return -1;
 
 	status = CompressionStatus::COMPRESSED;
 	imageData.Clear();
@@ -170,6 +178,11 @@ int ImageEntry::CompressImageData() {
 
 int ImageEntry::DecompressImageData() {
 	std::unique_lock lock(lockstate);
+
+	//Image already decompressed
+	if (status == CompressionStatus::DECOMPRESSED) return 0;
+
+	//Image not even loaded in
 	if (status != CompressionStatus::COMPRESSED) return -2;
 
 	QOIDecompress(std::span<uint8_t>(imageDataCompressed.data(), imageDataCompressed.size()), imageData.data, width, height);

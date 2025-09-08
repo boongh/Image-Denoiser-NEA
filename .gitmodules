@@ -4,13 +4,6 @@
 [submodule "dependencies/stb"]
 	path = dependencies/stb
 	url = https://github.com/nothings/stb.git
-[submodule "dependencies/imGui"]
-	path = dependencies/imGui
-	url = https://github.com/ocornut/imgui.git
-	branch = docking
-[submodule "Dependencies/imGui"]
-	path = Dependencies/imGui
-	url = https://github.com/ocornut/imgui.git
 	branch = docking
 [submodule "Dependencies/FileReader"]
 	path = Dependencies/FileReader

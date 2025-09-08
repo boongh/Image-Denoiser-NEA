@@ -220,6 +220,9 @@ void Application::DisplayDenoiseParamMenu() {
     ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
     if (ImGui::Button("Smooth LF", ImVec2(0, 0)) && currselection != nullptr)
         SmoothFilter(currselection, " [Copy]");
+    if (ImGui::Button("Smooth LF All", ImVec2(0, 0)) && currselection != nullptr)
+        BatchSmoothFilter();
+
     ImGui::InputFloat("Strength##SF", &filterParameters.SFParameter.strength, 0.02f, 0.2f);
     ImGui::PopItemWidth();
 
@@ -251,11 +254,11 @@ void Application::DisplayDenoiseParamMenu() {
 #pragma endregion
 }
 
-void Application::ForAllSelectedImage(void(*func)(std::shared_ptr<ImageEntry>)) {
-    for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
-        if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
-            func(Manager.GetImage(idx));
-        }
+void Application::ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func) {  
+    for (int idx = 0; idx < Manager.GetImageCount(); idx++) {  
+        if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {  
+            func(Manager.GetImage(idx));  
+        }  
     }
 }
 
@@ -488,6 +491,11 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
 
 }
 
+void Application::DisplayImageSaveMenu()
+{
+
+}
+
 void Application::LoadAllImages() {
 
     std::thread thread([this]() {
@@ -580,6 +588,13 @@ int Application::Run() {
         ImGuiIO& io = ImGui::GetIO();
 
 		ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_FirstUseEver);
+
+        ImGui::Begin("ImageDenoisingParameter");
+        {
+            DisplayDenoiseParamMenu();
+        }
+        ImGui::End();
+
 		ImGui::Begin("Preview", nullptr);
 
 
@@ -590,7 +605,6 @@ int Application::Run() {
                     ImGui::Text("FAILED TO LOAD IMAGE");
                 }
                 else {
-                    DisplayDenoiseParamMenu();
 
                     ImGui::LabelText("info", "File path: %s", currselection->GetFileName().string().c_str());
                     ImVec2 dim = ImVec2(currselection->GetWidth(), currselection->GetHeight());
@@ -603,14 +617,14 @@ int Application::Run() {
                 }
             }
         }
+
         ImGui::EndChild();
 
         ImGui::End();
 
+        ImGui::Begin("ImageListView", nullptr, ImGuiWindowFlags_NoNav);
         {
-            ImGui::Begin("ImageListView", nullptr, ImGuiWindowFlags_NoNav);
 
-           
             ImGui::PushStyleVar(ImGuiStyleVar_ImageBorderSize, std::max(1.0f, ImGui::GetStyle().ImageBorderSize));
 
             ImGui::BeginChild("Image list", ImVec2(0, 0), ImGuiChildFlags_Borders);
@@ -738,65 +752,90 @@ void Application::ImportFiles(std::span<std::string> paths) {
 void Application::SmoothFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends)
 {
 	auto param = filterParameters.SFParameter;
-    std::jthread([this, image, param, nameExtends]() {
+    bool isDecompressed = image->IsDecompressed();
 
-#ifdef DEBUG
-        auto timer = std::chrono::high_resolution_clock();
-        auto start = timer.now();
-#endif // DEBUG
+    if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
+        std::print("Successfully load and decompress");
+        image->CompressImageData();
+    //    std::jthread([this, image, param, nameExtends, isDecompressed]() {
 
-        std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
-            image->ReadImageData(),
-            static_cast<unsigned int>(image->GetWidth()),
-            static_cast<unsigned int>(image->GetHeight()),
-            param.kernelWidth, param.kernelHeight, param.strength);
+    //#ifdef DEBUG
+    //        auto timer = std::chrono::high_resolution_clock();
+    //        auto start = timer.now();
+    //#endif // DEBUG
 
-        Manager.ImportFromSpan(
-            denoised,
-            static_cast<unsigned int>(image->GetWidth()),
-            static_cast<unsigned int>(image->GetHeight()),
-            ExtendsFileName(image->GetFilePath_path(), nameExtends).string());
+    //        std::vector<PixelRGBA> denoised = Denoiser::SmoothLF(
+    //            image->ReadImageData(),
+    //            static_cast<unsigned int>(image->GetWidth()),
+    //            static_cast<unsigned int>(image->GetHeight()),
+    //            param.kernelWidth, param.kernelHeight, param.strength);
 
-#ifdef DEBUG
-        auto end = timer.now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    //        Manager.ImportFromSpan(
+    //            denoised,
+    //            static_cast<unsigned int>(image->GetWidth()),
+    //            static_cast<unsigned int>(image->GetHeight()),
+    //            nameExtends);
 
-        std::cout << "Took " << elapsed.count() << " ms" << std::endl;
-#endif // DEBUG
+    //#ifdef DEBUG
+    //        auto end = timer.now();
+    //        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-        }).detach();
+    //        std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+    //#endif // DEBUG
+
+    //        if (!isDecompressed) image->CompressImageData();
+    //        }).join();
+    }
+    else {
+        std::print("File couldn't be loaded");
+    }
+}
+
+
+//Batch filter all selected items. This 
+void Application::BatchSmoothFilter()
+{
+    ForAllSelectedImage([this](std::shared_ptr<ImageEntry> image) {
+        SmoothFilter(image, 
+            image->GetFilePath_path().parent_path().string() + "/" + image->GetFileName().filename().string() + " [Copy]" + image->GetFileName().extension().string());
+    });
 }
 
 void Application::BilateralFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends) {
 	auto param = filterParameters.BFParameter;
-    std::jthread([this, image, param, nameExtends]() {
+    if (image->LoadImage() == 0 || image->DecompressImageData() == 0) {
+        std::jthread([this, image, param, nameExtends]() {
 
 #ifdef DEBUG
-        auto timer = std::chrono::high_resolution_clock();
-        auto start = timer.now();
+            auto timer = std::chrono::high_resolution_clock();
+            auto start = timer.now();
 #endif // DEBUG
 
-        std::vector<PixelRGBA> denoised = Denoiser::BilateralFilter(
-            image->ReadImageData(),
-            static_cast<unsigned int>(image->GetWidth()),
-            static_cast<unsigned int>(image->GetHeight()),
-            param.kernelWidth, param.kernelHeight,
-            param.sigmaSpatial, param.sigmaColor);
+            std::vector<PixelRGBA> denoised = Denoiser::BilateralFilter(
+                image->ReadImageData(),
+                static_cast<unsigned int>(image->GetWidth()),
+                static_cast<unsigned int>(image->GetHeight()),
+                param.kernelWidth, param.kernelHeight,
+                param.sigmaSpatial, param.sigmaColor);
 
-        Manager.ImportFromSpan(
-            denoised,
-            static_cast<unsigned int>(image->GetWidth()),
-            static_cast<unsigned int>(image->GetHeight()),
-            ExtendsFileName(image->GetFilePath_path(), nameExtends).string());
+            Manager.ImportFromSpan(
+                denoised,
+                static_cast<unsigned int>(image->GetWidth()),
+                static_cast<unsigned int>(image->GetHeight()),
+                ExtendsFileName(image->GetFilePath_path(), nameExtends).string());
 
 #ifdef DEBUG
-        auto end = timer.now();
-        auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+            auto end = timer.now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-        std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
 #endif // DEBUG
 
-        }).detach();
+            }).detach();
+    }
+    else {
+        std::print("Image Loading Fail");
+    }
 }
 
 std::filesystem::path Application::ExtendsFileName(std::filesystem::path file, std::string extends) 
