@@ -207,4 +207,7 @@
   <ItemGroup>
     <Text Include="Dependencies\Imgui\LICENSE.txt" />
   </ItemGroup>
+  <ItemGroup>
+    <Xml Include="..\..\..\..\cdrive backup\downloads\E.Downloads\UI.drawio.xml" />
+  </ItemGroup>
 </Project>
