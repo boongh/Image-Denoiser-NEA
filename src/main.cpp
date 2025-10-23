@@ -1,17 +1,15 @@
 #include <Application.h>
 
 #pragma region Debug data
-#define TESTDATA "E:/Programming/Projects/Image Denoising NEA/Image Denoising NEA/testdata/cbsd68/CBSD68/noisy50/0000.png"
-
+#define TESTDATA "E:/cdrive backup/downloads/25.9.6/Downloads/Firefox bg/117646530_p1.jpg"
+	
 #pragma endregion
 
 
 
-int main() {	
-
-	
+int main() {
 	Application app;
-	//app.DEBUGRUN(TESTDATA);
+	app.DEBUGRUN(TESTDATA);
 	app.Run();
 	return 0;
 }
