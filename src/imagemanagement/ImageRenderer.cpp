@@ -55,7 +55,7 @@ int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
 			ImGui::SameLine();
 			PixelRGBA P;
 			if (source->GetPixel(io.MousePos.x - pos.x, io.MousePos.y - pos.y, P) == 0) {
-				ImGui::Text("RGBA Val (%.2f, %.2f, %.2f, %.2f)", P.r, P.g, P.b, P.a);
+				ImGui::Text("RGBA Val (%d, %d, %d, %d)", P.r, P.g, P.b, P.a);
 			}
 			ImGui::Text("Min: (%.2f, %.2f)", region_x, region_y);
 			ImGui::Text("Max: (%.2f, %.2f)", region_x + widgetDimension.x, region_y + widgetDimension.y);

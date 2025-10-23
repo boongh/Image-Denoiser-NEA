@@ -720,24 +720,45 @@ void Application::DEBUGRUN(const char* infiles) {
     }
 
     ImportFiles(paths);
+    std::vector<RGBAImageI> ImageBuffer;
+    for (auto image : Manager) {
 
-    auto image = Manager.GetImage(0);
-    if (image == nullptr) {
-        std::cout << "No image loaded" << std::endl;
-        return;
-	}
+        if (image == nullptr) {
+            std::cout << "No image loaded" << std::endl;
+            return;
+        }
 
-    image->LoadImage();
+        image->LoadImage();
 
-	auto imageData = image->ReadImageData();
+        auto imageData = image->ReadImageData();
 
-    auto denoisedimage = Denoiser::FastBilateralFilterApproximation(imageData, image->GetWidth(), image->GetHeight(), 5, 5, 1, 1, 0.01);
+        Denoiser::DWT::DecTree dectree = Denoiser::DWT::DecTree(imageData, image->GetWidth(), image->GetHeight());
 
-    Manager.ImportFromSpan(
-        denoisedimage,
-        static_cast<unsigned int>(image->GetWidth()),
-        static_cast<unsigned int>(image->GetHeight()),
-		ExtendsFileName(image->GetFilePath_path(), " [Copy]").string());
+        auto imGray1 = dectree.GetImageRGB(1, 1, 1);
+        auto pixel1 = imGray1.GetPixel(1213, 218);
+
+		std::print("Pixel at (1158, 200): R={}, G={}, B={}, A={}\n", pixel1.r, pixel1.g, pixel1.b, pixel1.a);
+
+        std::cout << (dectree.ExpandTree()) << "\n";
+
+        std::cout << dectree.CollapseTree() << "\n";
+
+		auto imGray2 = dectree.GetImageRGB(1, 1, 1);
+        auto pixel2 = imGray2.GetPixel(1213, 218);
+
+        std::print("Pixel at (1158, 200): R={}, G={}, B={}, A={}\n", pixel2.r, pixel2.g, pixel2.b, pixel2.a);
+
+        ImageBuffer.push_back(imGray2);
+    }
+
+    for (int i = 0; i < ImageBuffer.size(); ++i) {
+        int n = 0;
+        Manager.ImportFromSpan(
+            ImageBuffer[i].data,
+            static_cast<unsigned int>(ImageBuffer[i].width),
+            static_cast<unsigned int>(ImageBuffer[i].height),
+            ("Test File Name ") + (n++));
+    }
 
     
 #endif // DEBUG

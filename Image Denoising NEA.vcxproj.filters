@@ -108,6 +108,9 @@
     <ClCompile Include="src\denoiser\FastBilateralApprox.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="src\denoiser\DWT.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Dependencies\emscripten\emscripten_mainloop_stub.h">
