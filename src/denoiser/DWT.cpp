@@ -126,13 +126,17 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	if (direction != 0 && direction != 1) {
 		return 1;
 	}
-	if (low == nullptr || high == nullptr) return 1;
+	if (low == nullptr || high == nullptr)
+		return 1;
 
 	unsigned oldLowLength = low->brightnessData.size();
 	unsigned oldHighLength = high->brightnessData.size();
 
 	unsigned int newWidth;
 	unsigned int newHeight;
+
+	int trueWidth = low->width;
+	int trueHeight = low->height;
 
 #if doDivide
 
@@ -141,12 +145,14 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 		newWidth = width + filterLength - 1;
 		height = low->height;
 		newHeight = height;
+		trueWidth = width - (filterLength - 1);
 	}
 	else {
 		height = 2 * low->height;
 		newHeight = height + filterLength - 1;
 		width = low->width;
 		newWidth = width;
+		trueHeight = height - (filterLength - 1);
 	}
 
 
@@ -205,7 +211,8 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 
 
-	brightnessData = std::vector<float>(newHeight * newWidth, 0.0);
+	
+	std::vector<float> intermediate = std::vector<float>(newHeight * newWidth, 0.0);
 
 	//Low pass first, high pass second
 	int first = 0, stop = 1;
@@ -250,12 +257,12 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 				int dstPos = PosCompose(x, y, extendsWidth);
 
-				if(dstPos < 0 || dstPos >= brightnessData.size()) {
+				if(dstPos < 0 || dstPos >= intermediate.size()) {
 					std::cout << "Error: dstPos out of bounds in DWT recomposition.\n";
 					return 1;
 				}
 
-				brightnessData[dstPos] += sum;
+				intermediate[dstPos] += sum;
 			}
 		}
 	}
@@ -288,6 +295,41 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 	width = newWidth;
 	height = newHeight;
+
+	brightnessData = std::vector<float>(newWidth * newHeight);
+
+	brightnessData = intermediate;
+
+	////horizontal crop
+	////skips the first and the last L - 1 pixels each row
+	////RowLength = length - (L - 1) * 2
+	//if (direction == 0) {
+	//	for (int y = 0; y < newHeight; ++y) {
+	//		for (int x = 0; x < trueWidth; ++x) {
+	//			int srcPos = PosCompose(x + (filterLength - 1), y, newWidth);
+	//			int dstPos = PosCompose(x, y, trueWidth);
+	//			brightnessData[dstPos] = intermediate[srcPos];
+	//		}
+	//	}
+	//
+	//}
+	//Vertical crop
+	//Skips the first and the last L-1 pixels of each column
+	//ColLength = length - (L - 1) * 2
+	//else if (direction == 1) {
+	//	
+	//	for (int y = 0; y < trueHeight; ++y) {
+	//		for (int x = 0; x < newWidth; ++x) {
+	//			int srcPos = PosCompose(x, y + (filterLength - 1), newWidth);
+	//			int dstPos = PosCompose(x, y, trueWidth);
+	//			brightnessData[dstPos] = intermediate[srcPos];
+	//		}
+	//	}
+	//}
+
+	//width = trueWidth;
+	//height = newHeight;
+
 	return 0;
 }
 
