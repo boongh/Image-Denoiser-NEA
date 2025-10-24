@@ -2,7 +2,7 @@
 #include <iostream>
 
 #define doBackward 1
-#define doDivide 1
+#define doDivide 0
 
 Denoiser::DWT::DecNode::DecNode(unsigned int width, unsigned int height, long layer) : low(nullptr), high(nullptr), width(width), height(height), layer(layer) {
 	brightnessData = std::vector<float>(width * height);
@@ -16,9 +16,27 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 
 	if (low != nullptr || high != nullptr) return 1;
 
+	unsigned int newWidth;
+	unsigned int newHeight;
+
+	int horStride;
+	int vertStride;
+
 #if doDivide
 
 
+	if (direction == 0) {
+		newWidth = (width + 3) / 2;
+		newHeight = height;
+		horStride = 2;
+		vertStride = 1;
+	}
+	else {
+		newHeight = (height + 3) / 2;
+		newWidth = width;
+		horStride = 1;
+		vertStride = 2;
+	}
 
 	unsigned int newWidth = width;
 	unsigned int newHeight = height;
@@ -46,11 +64,18 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 
 #else
 
-	unsigned int newWidth = width;
-	unsigned int newHeight = height;
-
-	int horStride = 1;
-	int vertStride = 1;
+	if (direction == 0) {
+		newWidth = (width + 3);
+		newHeight = height;
+		horStride = 1;
+		vertStride = 1;
+	}
+	else {
+		newHeight = (height + 3);
+		newWidth = width;
+		horStride = 1;
+		vertStride = 1;
+	}
 
 #endif
 
@@ -70,7 +95,7 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 				for (int w = 0; w < 4; ++w) {
 
 					int xPos = direction == 0 ? horStride * x - w : x;
-					int yPos = direction == 1 ? vertStride * y  - w : y;
+					int yPos = direction == 1 ? vertStride * y - w : y;
 
 					xPos = (xPos < 0) ? -xPos - 1 : (xPos >= width ? 2 * width - xPos - 1 : xPos);
 					yPos = (yPos < 0) ? -yPos - 1 : (yPos >= height ? 2 * height - yPos - 1 : yPos);	
@@ -96,12 +121,16 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 #endif
 
 				int dstPos = PosCompose(x, y, newWidth);
+
 				dst->brightnessData[dstPos] = sum;
 			}
 		}
 	}
 
-	brightnessData = std::vector<float>(width * height, 0);
+	width = newWidth;
+	height = newHeight;
+
+	brightnessData = std::vector<float>(0);
 	return 0;
 }
 
@@ -119,25 +148,17 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	unsigned int newWidth = width;
 	unsigned int newHeight = height;
 
-	unsigned int extendsWidth = 0;
-	unsigned int extendsHeight = 0;
+#if doDivide
 
-	const int filterDelay = 3;
-
-	if(direction == 0) {
-		extendsWidth = newWidth + 2 * 3;
-		extendsHeight = newHeight;
+	if (direction == 0) {
+		newWidth = 2 * low->width;
+		newHeight = low->height;
 	}
 	else {
-		extendsWidth = newWidth;
-		extendsHeight = newHeight + 2 * 3;
+		newHeight = 2 * low->height;
+		newWidth = low->width;
 	}
 
-	brightnessData = std::vector<float>(newHeight * newWidth, 0.0);
-	std::vector<float> intermediate = std::vector<float>(extendsHeight * extendsWidth , 0.0);
-
-
-#if doDivide
 
 	low->brightnessData.resize(oldLowLength * 2);
 	high->brightnessData.resize(oldHighLength * 2);
@@ -161,20 +182,30 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 #else
 
+
+	if (direction == 0) {
+		newWidth = low->width + 3;
+		newHeight = low->height;
+	}
+	else {
+		newHeight = low->height + 3;
+		newWidth = low->width;
+	}
+
 	//upsampling
 	//Zero padding horizontally
 	if (direction == 0) {
 		for (int index = static_cast<int>(oldLowLength - 1); index >= 0; index-=2) {
-			/*(low->brightnessData)[index] = 0;
-			(high->brightnessData)[index] = 0;*/
+			(low->brightnessData)[index] = 0;
+			(high->brightnessData)[index] = 0;
 		}
 	}
 	else if (direction == 1) {
 		for (int index = static_cast<int>(oldLowLength - newWidth - 1);
 			index >= 0;
 			index -= 2 * newWidth) {
-			/*std::memset(&(low->brightnessData)[index], 0, newWidth * sizeof(float));
-			std::memset(&(high->brightnessData)[index], 0, newWidth * sizeof(float));*/
+			std::memset(&(low->brightnessData)[index], 0, newWidth * sizeof(float));
+			std::memset(&(high->brightnessData)[index], 0, newWidth * sizeof(float));
 		}
 	}
 
@@ -182,9 +213,7 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 
 
-	//zero padding vertically
-	//Copy each row to their index * 2
-	//Zeros the row out afterward
+	brightnessData = std::vector<float>(newHeight * newWidth, 0.0);
 
 	//Low pass first, high pass second
 	int first = 0, stop = 1;
@@ -226,15 +255,13 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 					yPos = (yPos < 0) ? - yPos - 1 : (yPos >= height ? 2 * height - yPos - 1 : yPos);
 
 					int position = PosCompose(xPos, yPos, width);
+
 					sum += coefficients[w] * src[position];
 				}
 
 				int dstPos = PosCompose(x, y, extendsWidth);
 
-				if (dstPos == 0) {
-					std::cout << "dstPos: " << dstPos << "\n";
-				}
-				intermediate[dstPos] += sum;
+				brightnessData[dstPos] += sum;
 			}
 		}
 	}
@@ -262,12 +289,17 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
  //       std::memcpy(&brightnessData[0], &intermediate[startMemIdx], newWidth * newHeight * sizeof(float));
  //   }
 
+	low = nullptr;
+	high = nullptr;
+
+	width = newWidth;
+	height = newHeight;
 	return 0;
 }
 
 Denoiser::DWT::DecTree::DecTree() : expanded(false), rootNode(nullptr)
 {
-
+		
 }
 
 Denoiser::DWT::DecTree::DecTree(std::span<const PixelRGBA> src, unsigned int width, unsigned int height) {
@@ -286,7 +318,7 @@ Denoiser::DWT::DecTree::DecTree(std::span<const PixelRGBA> src, unsigned int wid
 
 int Denoiser::DWT::DecTree::ExpandTree()
 {
-	if (rootNode->DecomposeNode(0)) {
+	if (rootNode->DecomposeNode(0) == 0 && rootNode->low->DecomposeNode(0) == 0 && rootNode->high->DecomposeNode(0) == 0) {
 		// == 0 && rootNode->low->DecomposeNode(0) == 0 && rootNode->high->DecomposeNode(0) == 0
 		expanded = true;
 		return 0;
@@ -298,7 +330,7 @@ int Denoiser::DWT::DecTree::ExpandTree()
 
 int Denoiser::DWT::DecTree::CollapseTree(DecNode::ReconMode mode)
 {
-	if (rootNode->RecomposeNode(DecNode::ReconMode::Full) == 0) {
+	if (rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && rootNode->RecomposeNode(DecNode::ReconMode::Low) == 0) {
 		//rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && 
 		expanded = false;
 		return 0;
