@@ -737,6 +737,8 @@ void Application::DEBUGRUN(const char* infiles) {
         auto imGray1 = dectree.GetImageRGB(1, 0, 0);
         auto pixel1 = imGray1.GetPixel(1213, 218);
 
+        ImageBuffer.push_back(imGray1);
+
 		std::print("Pixel at (1158, 200): R={}, G={}, B={}, A={}\n", pixel1.r, pixel1.g, pixel1.b, pixel1.a);
 
         std::cout << (dectree.ExpandTree()) << "\n";
