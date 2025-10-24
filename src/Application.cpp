@@ -734,8 +734,10 @@ void Application::DEBUGRUN(const char* infiles) {
 
         Denoiser::DWT::DecTree dectree = Denoiser::DWT::DecTree(imageData, image->GetWidth(), image->GetHeight());
 
-        auto imGray1 = dectree.GetImageRGB(1, 1, 1);
+        auto imGray1 = dectree.GetImageRGB(1, 0, 0);
         auto pixel1 = imGray1.GetPixel(1213, 218);
+
+        ImageBuffer.push_back(imGray1);
 
 		std::print("Pixel at (1158, 200): R={}, G={}, B={}, A={}\n", pixel1.r, pixel1.g, pixel1.b, pixel1.a);
 

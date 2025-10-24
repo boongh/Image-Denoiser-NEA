@@ -2,7 +2,7 @@
 #include <iostream>
 
 #define doBackward 1
-#define doDivide 0
+#define doDivide 1
 
 Denoiser::DWT::DecNode::DecNode(unsigned int width, unsigned int height, long layer) : low(nullptr), high(nullptr), width(width), height(height), layer(layer) {
 	brightnessData = std::vector<float>(width * height);
@@ -68,7 +68,7 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 		for (int y = 0; y < newHeight; y++) {
 			for (int x = 0; x < newWidth; x++) {
 				double sum = 0;
-#if doBackward
+
 				for (int w = 0; w < 4; ++w) {
 
 					int xPos = direction == 0 ? horStride * x - w : x;
@@ -80,21 +80,6 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 					int position = PosCompose(xPos, yPos, width);
 					sum += coefficients[w] * brightnessData[position];
 				}
-
-#else// 1
-				for (int w = 0; w < 4; ++w) {
-
-					int xPos = direction == 0 ? x + w : x;
-					int yPos = direction == 1 ? y + w : y;
-
-					xPos = xPos >= width ? width - ((xPos - width) + 1) : xPos;
-					yPos = yPos >= height ? height - ((yPos - height) + 1) : yPos;
-
-					int position = PosCompose(xPos, yPos, width);
-					sum += coefficients[w] * brightnessData[position];
-				}
-
-#endif
 
 				int dstPos = PosCompose(x, y, newWidth);
 
@@ -112,6 +97,7 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 
 int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 {
+	const int filterLength = 4;
 	int direction = low->layer % 2;
 
 	if (direction != 0 && direction != 1) {
@@ -122,23 +108,27 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	unsigned oldLowLength = low->brightnessData.size();
 	unsigned oldHighLength = high->brightnessData.size();
 
-	unsigned int newWidth = width;
-	unsigned int newHeight = height;
+	unsigned int newWidth;
+	unsigned int newHeight;
 
 #if doDivide
 
 	if (direction == 0) {
-		newWidth = 2 * low->width;
-		newHeight = low->height;
+		width = 2 * low->width;
+		newWidth = width + filterLength - 1;
+		height = low->height;
+		newHeight = height;
 	}
 	else {
-		newHeight = 2 * low->height;
-		newWidth = low->width;
+		height = 2 * low->height;
+		newHeight = height + filterLength - 1;
+		width = low->width;
+		newWidth = width;
 	}
 
 
-	low->brightnessData.resize(low->brightnessData.size() * 2);
-	high->brightnessData.resize(high->brightnessData.size() * 2);
+	low->brightnessData.resize(width * height);
+	high->brightnessData.resize(width * height);
 
 	//upsampling
 	//Zero padding horizontally
@@ -149,11 +139,13 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 		}
 	}
 	else if (direction == 1) {
-		for (int index = static_cast<int>(oldLowLength - newWidth - 1);
+		for (int index = static_cast<int>(oldLowLength - width - 1);
 			index >= 0;
-			index -= static_cast<int>(newWidth)) {
-			std::memmove(&(low->brightnessData)[index * 2], &(low->brightnessData)[index], newWidth * sizeof(float));
-			std::memmove(&(high->brightnessData)[index * 2], &(high->brightnessData)[index], newWidth * sizeof(float));
+			index -= static_cast<int>(width)) {
+			std::memmove(&(low->brightnessData)[index * 2], &(low->brightnessData)[index], width * sizeof(float));
+			std::memmove(&(high->brightnessData)[index * 2], &(high->brightnessData)[index], width * sizeof(float));
+			std::memset(&(high->brightnessData)[index], 0, width * sizeof(float));
+			std::memset(&(low->brightnessData)[index], 0, width * sizeof(float));
 		}
 	}
 
@@ -200,6 +192,7 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	if (mode == ReconMode::High) {
 		first = 1;
 	}
+	
 	for (int pass = first; pass <= stop; pass++) {
 		std::span<const double, 4> coefficients = std::span<const double, 4>(pass == 0 ? sym2.rec_lo.data() : sym2.rec_hi.data(), 4);
 		std::vector<float> src = pass == 0 ? low->brightnessData : high->brightnessData;
@@ -208,35 +201,36 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 				double sum = 0;
 				for (int w = 0; w < 4; ++w) {
 
-					const int delay = 0;
-					int read_x = x;
-					int read_y = y;
-
-					if (direction == 0) {
-						read_x += delay;
-					}
-					else {
-						read_y += delay;
-					}
-
 #if doBackward
-					int xPos = direction == 0 ? read_x - w : read_x;
-					int yPos = direction == 1 ? read_y - w : read_y;
+					int xPos = direction == 0 ? x - w : x;
+					int yPos = direction == 1 ? y - w : y;
 
 #else// 1
 					int xPos = direction == 0 ? read_x + w : read_x;
 					int yPos = direction == 1 ? read_y + w : read_y;
-
 #endif
+
+					int bufferX = xPos;
+					int bufferY = yPos;
 					xPos = (xPos < 0) ? - xPos - 1 : (xPos >= width ? 2 * width - xPos - 1 : xPos);
 					yPos = (yPos < 0) ? - yPos - 1 : (yPos >= height ? 2 * height - yPos - 1 : yPos);
 
 					int position = PosCompose(xPos, yPos, width);
 
+					if(position < 0 || position >= src.size()) {
+						std::cout << "Error: position out of bounds in DWT recomposition.\n";
+						return 1;
+					}
+
 					sum += coefficients[w] * src[position];
 				}
 
 				int dstPos = PosCompose(x, y, newWidth);
+
+				if(dstPos < 0 || dstPos >= brightnessData.size()) {
+					std::cout << "Error: dstPos out of bounds in DWT recomposition.\n";
+					return 1;
+				}
 
 				brightnessData[dstPos] += sum;
 			}
@@ -274,7 +268,7 @@ Denoiser::DWT::DecTree::DecTree(std::span<const PixelRGBA> src, unsigned int wid
 int Denoiser::DWT::DecTree::ExpandTree()
 {
 	if (rootNode->DecomposeNode(0) == 0 && rootNode->low->DecomposeNode(0) == 0 && rootNode->high->DecomposeNode(0) == 0) {
-		// == 0 && rootNode->low->DecomposeNode(0) == 0 && rootNode->high->DecomposeNode(0) == 0
+		// && rootNode->low->DecomposeNode(0) == 0 && rootNode->high->DecomposeNode(0) == 0
 		expanded = true;
 		return 0;
 	}
@@ -285,7 +279,7 @@ int Denoiser::DWT::DecTree::ExpandTree()
 
 int Denoiser::DWT::DecTree::CollapseTree(DecNode::ReconMode mode)
 {
-	if (rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && rootNode->RecomposeNode(DecNode::ReconMode::Low) == 0) {
+	if (rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && rootNode->RecomposeNode(DecNode::ReconMode::Full) == 0) {
 		//rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && 
 		expanded = false;
 		return 0;
