@@ -238,6 +238,7 @@ public:
             int ExpandTree();
             int CollapseTree(DecNode::ReconMode mode = DecNode::ReconMode::Full);
             RGBAImageI GetImageRGB(float Y = 1.0, float Cb = 1.0, float Cr = 1.0, float r = 1.0, float g = 1.0, float b = 1.0);
+			RGBAImageI GetImageGray(float Y = 1.0);
             std::vector<std::array<float, 3>> GetImageYCbCr();
 
 

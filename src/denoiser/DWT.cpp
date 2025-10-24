@@ -12,19 +12,37 @@ Denoiser::DWT::DecNode::DecNode(unsigned int width, unsigned int height, long la
 int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 {
 	int direction = (layer + 1) % 2;
-	if ((direction == 0 && width % 2 != 0) || (direction == 1 && height % 2 != 0)) return 1;
 	if (direction != 0 && direction != 1) return 1;
-
 
 	if (low != nullptr || high != nullptr) return 1;
 
 #if doDivide
 
-	unsigned int newWidth = direction == 0 ? width / 2 : width;
-	unsigned int newHeight = direction == 1 ? height / 2 : height;
 
-	int horStride = direction == 1 ? 1 : 2;
-	int vertStride = direction == 0 ? 1 : 2;
+
+	unsigned int newWidth = width;
+	unsigned int newHeight = height;
+
+	int horStride;
+	int vertStride;
+
+	int verPad;
+	int horPad;
+
+	if(direction == 0) {
+		newWidth = (width + 4 - 1) / 2;
+		horStride = 2;
+		vertStride = 1;
+		verPad = 0;
+		horPad = 4 - 1;
+	}
+	else {
+		newHeight = (height + 4 - 1) / 2;
+		horStride = 1;
+		vertStride = 2;
+		verPad = 4 - 1;
+		horPad = 0;
+	}
 
 #else
 
@@ -45,19 +63,20 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 	for (int pass = 0; pass <= 1; pass++) {
 		std::span<const double, 4> coefficients = std::span<const double, 4>(pass == 0 ? sym2.dec_lo.data() : sym2.dec_hi.data(), 4);
 		std::shared_ptr<DecNode> dst = ((pass == 0) ? low : high);
-		for (int y = 0; y < height; y += vertStride) {
-			for (int x = 0; x < width; x += horStride) {
+		for (int y = 0; y < newHeight; y++) {
+			for (int x = 0; x < newWidth; x++) {
 				double sum = 0;
 #if doBackward
 				for (int w = 0; w < 4; ++w) {
 
-					int xPos = direction == 0 ? x - w : x;
-					int yPos = direction == 1 ? y - w : y;
+					int xPos = direction == 0 ? horStride * x - w : x;
+					int yPos = direction == 1 ? vertStride * y  - w : y;
 
 					xPos = (xPos < 0) ? -xPos - 1 : (xPos >= width ? 2 * width - xPos - 1 : xPos);
 					yPos = (yPos < 0) ? -yPos - 1 : (yPos >= height ? 2 * height - yPos - 1 : yPos);	
 
 					int position = PosCompose(xPos, yPos, width);
+
 					sum += coefficients[w] * brightnessData[position];
 				}
 
@@ -76,14 +95,7 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 
 #endif
 
-#if doDivide
-				int dstPos = PosCompose(
-					direction == 0 ? x >> 1 : x,
-					direction == 1 ? y >> 1 : y,
-					newWidth);
-#else
 				int dstPos = PosCompose(x, y, newWidth);
-#endif
 				dst->brightnessData[dstPos] = sum;
 			}
 		}
@@ -96,7 +108,6 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 {
 	int direction = low->layer % 2;
-
 	if (direction != 0 && direction != 1) {
 		return 1;
 	}
@@ -108,13 +119,28 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	unsigned int newWidth = width;
 	unsigned int newHeight = height;
 
+	unsigned int extendsWidth = 0;
+	unsigned int extendsHeight = 0;
+
+	const int filterDelay = 3;
+
+	if(direction == 0) {
+		extendsWidth = newWidth + 2 * 3;
+		extendsHeight = newHeight;
+	}
+	else {
+		extendsWidth = newWidth;
+		extendsHeight = newHeight + 2 * 3;
+	}
+
 	brightnessData = std::vector<float>(newHeight * newWidth, 0.0);
+	std::vector<float> intermediate = std::vector<float>(extendsHeight * extendsWidth , 0.0);
 
 
 #if doDivide
 
-	low->brightnessData.resize(low->brightnessData.size() * 2);
-	high->brightnessData.resize(high->brightnessData.size() * 2);
+	low->brightnessData.resize(oldLowLength * 2);
+	high->brightnessData.resize(oldHighLength * 2);
 
 	//upsampling
 	//Zero padding horizontally
@@ -128,10 +154,8 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 		for (int index = static_cast<int>(oldLowLength - newWidth - 1);
 			index >= 0;
 			index -= static_cast<int>(newWidth)) {
-			std::memcpy(&(low->brightnessData)[index * 2], &(low->brightnessData)[index], newWidth * sizeof(float));
-			std::memcpy(&(high->brightnessData)[index * 2], &(high->brightnessData)[index], newWidth * sizeof(float));
-			std::memset(&(low->brightnessData)[index], 0, newWidth * sizeof(float));
-			std::memset(&(high->brightnessData)[index], 0, newWidth * sizeof(float));
+			std::memmove(&(low->brightnessData)[index * 2], &(low->brightnessData)[index], newWidth * sizeof(float));
+			std::memmove(&(high->brightnessData)[index * 2], &(high->brightnessData)[index], newWidth * sizeof(float));
 		}
 	}
 
@@ -173,13 +197,12 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	for (int pass = first; pass <= stop; pass++) {
 		std::span<const double, 4> coefficients = std::span<const double, 4>(pass == 0 ? sym2.rec_lo.data() : sym2.rec_hi.data(), 4);
 		std::vector<float> src = pass == 0 ? low->brightnessData : high->brightnessData;
-		for (int y = 0; y < newHeight; y++) {
-			for (int x = 0; x < newWidth; x++) {
+		for (int y = 0; y < extendsHeight; y++) {
+			for (int x = 0; x < extendsWidth; x++) {
 				double sum = 0;
 				for (int w = 0; w < 4; ++w) {
 
-					// FIX: Compensate for the sym2 wavelet's delay
-					const int delay = 1;
+					const int delay = 0;
 					int read_x = x;
 					int read_y = y;
 
@@ -206,19 +229,39 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 					sum += coefficients[w] * src[position];
 				}
 
-				int dstPos = PosCompose(x, y, newWidth);
+				int dstPos = PosCompose(x, y, extendsWidth);
 
 				if (dstPos == 0) {
 					std::cout << "dstPos: " << dstPos << "\n";
 				}
-				brightnessData[dstPos] += sum;
+				intermediate[dstPos] += sum;
 			}
 		}
 	}
+      
+	width = extendsWidth;
+	height = extendsHeight;
 
+	brightnessData = intermediate;
 
-	low = nullptr;
-	high = nullptr;
+	//brightnessData.resize(newWidth * newHeight);
+
+ //   if (direction == 0) { 
+ //       // HORIZONTAL: Crop 3 columns from the left
+ //       int startCol = filterDelay;
+ //       for (int y = 0; y < newHeight; y++) {
+ //           int srcIdx = y * extendsWidth + startCol;
+ //           int dstIdx = y * newWidth;
+ //           std::memcpy(&brightnessData[dstIdx], &intermediate[srcIdx], newWidth * sizeof(float));
+ //       }
+ //   } else { 
+ //       // VERTICAL: Crop 3 rows from the top
+ //       int startRow = filterDelay;
+ //       int startMemIdx = startRow * extendsWidth;
+ //           
+ //       std::memcpy(&brightnessData[0], &intermediate[startMemIdx], newWidth * newHeight * sizeof(float));
+ //   }
+
 	return 0;
 }
 
@@ -255,7 +298,7 @@ int Denoiser::DWT::DecTree::ExpandTree()
 
 int Denoiser::DWT::DecTree::CollapseTree(DecNode::ReconMode mode)
 {
-	if (rootNode->RecomposeNode(DecNode::ReconMode::High) == 0) {
+	if (rootNode->RecomposeNode(DecNode::ReconMode::Full) == 0) {
 		//rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && 
 		expanded = false;
 		return 0;
@@ -276,6 +319,22 @@ RGBAImageI Denoiser::DWT::DecTree::GetImageRGB(float Y, float Cb, float Cr, floa
 		std::array<float, 3> currPix = YCbCrtoLRGB(rootNode->brightnessData[i] * Y, rootImage[i][1] * Cb, rootImage[i][2] * Cr);
 
 		dst.data[i] = PixelRGBA(currPix[0] * 255.0 * r, currPix[1] * 255.0 * g, currPix[2] * 255.0 * b, rootAlpha[i]);
+	}
+	return dst;
+}
+
+RGBAImageI Denoiser::DWT::DecTree::GetImageGray(float Y)
+{
+	RGBAImageI dst(rootNode->width, rootNode->height, 4);
+
+	std::cout << "Rootnode: " << rootNode->width << " * " << rootNode->height << "\n";
+	std::cout << "Root Image: " << rootImage.size() << "\n";
+	std::cout << "brightnessData : " << rootNode->brightnessData.size() << "\n";
+	std::cout << "Dst: " << dst.data.size() << "\n";
+	for (int i = 0; i < dst.data.size(); ++i) {
+		std::array<float, 3> currPix = YCbCrtoLRGB(rootNode->brightnessData[i] * Y, 0, 0);
+
+		dst.data[i] = PixelRGBA(currPix[0] * 255.0, currPix[1] * 255.0, currPix[2] * 255.0, 255);
 	}
 	return dst;
 }
