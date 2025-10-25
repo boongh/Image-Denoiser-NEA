@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -171,7 +171,9 @@
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp" />
     <ClCompile Include="Dependencies\tinyfiledialogs\tinyfiledialogs.c" />
-    <ClCompile Include="src\denoiser\DWT.cpp" />
+    <ClCompile Include="src\denoiser\DWT\DWTTree.cpp" />
+    <ClCompile Include="src\denoiser\DWT\DWTNode.cpp" />
+    <ClCompile Include="src\denoiser\DWT\Thresholder.cpp" />
     <ClCompile Include="src\denoiser\FastBilateralApprox.cpp" />
     <ClCompile Include="src\imagemanagement\ImageManager.cpp" />
     <ClCompile Include="src\imagemanagement\ImageEntry.cpp" />
@@ -179,6 +181,7 @@
     <ClCompile Include="src\imguicustom\CustomWidget.cpp" />
     <ClCompile Include="src\imguicustom\ImGuiimageloaderOpenGL.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\utility\mathsutils.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="include\Application.h" />
@@ -210,6 +213,8 @@
     <ClInclude Include="include\denoiser.h" />
     <ClInclude Include="include\ImageContainer.h" />
     <ClInclude Include="include\ImGuiimageloader.h" />
+    <ClInclude Include="include\mathsutils.h" />
+    <ClInclude Include="src\utility\mathsutils.h" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Dependencies\emscripten\shell_minimal.html" />
