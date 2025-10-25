@@ -2,7 +2,7 @@
 #include <iostream>
 
 #define doBackward 1
-#define doDivide 1
+#define doDivide 0
 
 Denoiser::DWT::DecNode::DecNode(unsigned int width, unsigned int height, long layer) : low(nullptr), high(nullptr), width(width), height(height), layer(layer) {
 	brightnessData = std::vector<float>(width * height);
@@ -161,10 +161,12 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	if (direction == 0) {
 		newWidth = low->width + 3;
 		newHeight = low->height;
+		trueWidth = low->width - (filterLength - 1);
 	}
 	else {
 		newHeight = low->height + 3;
 		newWidth = low->width;
+		trueHeight = low->height - (filterLength - 1);
 	}
 
 	//upsampling
@@ -186,9 +188,6 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 #endif
 
-
-
-	
 	std::vector<float> intermediate = std::vector<float>(newHeight * newWidth, 0.0);
 
 	//Low pass first, high pass second
@@ -251,39 +250,34 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	width = newWidth;
 	height = newHeight;
 
-	brightnessData = std::vector<float>(newWidth * newHeight);
-
 	brightnessData = intermediate;
 
-	////horizontal crop
-	////skips the first and the last L - 1 pixels each row
-	////RowLength = length - (L - 1) * 2
-	//if (direction == 0) {
-	//	for (int y = 0; y < newHeight; ++y) {
-	//		for (int x = 0; x < trueWidth; ++x) {
-	//			int srcPos = PosCompose(x + (filterLength - 1), y, newWidth);
-	//			int dstPos = PosCompose(x, y, trueWidth);
-	//			brightnessData[dstPos] = intermediate[srcPos];
-	//		}
-	//	}
-	//
-	//}
+	brightnessData = std::vector<float>(trueWidth * trueHeight);
+
+
+	//horizontal crop
+	//skips the first and the last L - 1 pixels each row
+	//RowLength = length - (L - 1) * 2
+	if (direction == 0) {
+		for (int y = 0; y < newHeight; ++y) {
+			for (int x = 0; x < trueWidth; ++x) {
+				int srcPos = PosCompose(x + (filterLength - 1), y, newWidth);
+				int dstPos = PosCompose(x, y, trueWidth);
+				brightnessData[dstPos] = intermediate[srcPos];
+			}
+		}
+	
+	}
 	//Vertical crop
 	//Skips the first and the last L-1 pixels of each column
 	//ColLength = length - (L - 1) * 2
-	//else if (direction == 1) {
-	//	
-	//	for (int y = 0; y < trueHeight; ++y) {
-	//		for (int x = 0; x < newWidth; ++x) {
-	//			int srcPos = PosCompose(x, y + (filterLength - 1), newWidth);
-	//			int dstPos = PosCompose(x, y, trueWidth);
-	//			brightnessData[dstPos] = intermediate[srcPos];
-	//		}
-	//	}
-	//}
+	else if (direction == 1) {
+		int srcPos = PosCompose(0, filterLength - 1, newWidth);
+		memmove(&(brightnessData[0]), &(intermediate[srcPos]), trueWidth * trueHeight * sizeof(float));
+	}
 
-	//width = trueWidth;
-	//height = newHeight;
+	width = trueWidth;
+	height = trueHeight;
 
 	return 0;
 }
@@ -297,7 +291,7 @@ Denoiser::DWT::DecTree::DecTree(std::span<const PixelRGBA> src, unsigned int wid
 	expanded = false;
 	rootAlpha = std::vector<int>(width * height);
 	rootImage = std::vector<std::array<float, 3>>(width * height);
-	rootNode = std::make_shared<DecNode>(width, height, -1);
+	rootNode = std::make_shared<DecNode>(width, height, 0);
 
 	for (int index = 0; index < height * width; ++index) {
 		//Convert to normalized YCbCr from normalized RGB
@@ -307,28 +301,36 @@ Denoiser::DWT::DecTree::DecTree(std::span<const PixelRGBA> src, unsigned int wid
 	}
 }
 
+void TreeExpandHelper(std::shared_ptr<Denoiser::DWT::DecNode> node, int currentLevel, int targetLevel) {
+	if (currentLevel >= targetLevel) {
+		return;
+	}
+	if (node->low == nullptr && node->high == nullptr) {
+		node->DecomposeNode(0);
+	}
+	TreeExpandHelper(node->low, currentLevel + 1, targetLevel);
+	TreeExpandHelper(node->high, currentLevel + 1, targetLevel);
+}
+
+void TreeCollapseHelper(std::shared_ptr<Denoiser::DWT::DecNode> node, int currentLevel, Denoiser::DWT::DecNode::ReconMode mode = Denoiser::DWT::DecNode::ReconMode::Full) {
+	if (node->low != nullptr && node->high != nullptr) {
+		TreeCollapseHelper(node->low, currentLevel + 1, Denoiser::DWT::DecNode::ReconMode::Full);
+		TreeCollapseHelper(node->high, currentLevel + 1, Denoiser::DWT::DecNode::ReconMode::Low);
+		node->RecomposeNode(mode);
+	}
+}
+
 int Denoiser::DWT::DecTree::ExpandTree()
 {
-	if (rootNode->DecomposeNode(0) == 0 && rootNode->low->DecomposeNode(0) == 0 && rootNode->high->DecomposeNode(0) == 0) {
-		// && rootNode->low->DecomposeNode(0) == 0 && rootNode->high->DecomposeNode(0) == 0
-		expanded = true;
-		return 0;
-	}
-	else {
-		return 1;
-	}
+	const int decimationLevel = 6;
+	TreeExpandHelper(rootNode, -1, decimationLevel);
+	return 0;
 }
 
 int Denoiser::DWT::DecTree::CollapseTree(DecNode::ReconMode mode)
 {
-	if (rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && rootNode->RecomposeNode(DecNode::ReconMode::Full) == 0) {
-		//rootNode->low->RecomposeNode() == 0 && rootNode->high->RecomposeNode() == 0 && 
-		expanded = false;
-		return 0;
-	}
-	else {
-		return 1;
-	}
+	TreeCollapseHelper(rootNode, -1);
+	return 0;
 }
 
 RGBAImageI Denoiser::DWT::DecTree::GetImageRGB(float Y, float Cb, float Cr, float r, float g, float b) {
