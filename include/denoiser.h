@@ -10,6 +10,22 @@
 #include "mathsutils.h"
 
 namespace Denoiser {
+
+    using namespace MathsUtils;
+
+    template<typename T>
+    struct Thresholder {
+        virtual void SoftThreshold(std::span<T> array) {
+        };
+        virtual void HardThreshold(std::span<T> array) {
+        };
+    };
+
+    struct VisuShrink : public Thresholder<float> {
+        void SoftThreshold(std::span<float> array) override;
+    };
+
+
 	/// <summary>
 	/// Mean Linear filtering (LF) denoising algorithm.
 	/// </summary>
@@ -162,6 +178,9 @@ namespace Denoiser {
 
             int ExpandTree();
             int CollapseTree(DecNode::ReconMode mode = DecNode::ReconMode::Full);
+
+            void Thresholding(Thresholder<float>& thresholder);
+
             RGBAImageI GetImageRGB(float Y = 1.0, float Cb = 1.0, float Cr = 1.0, float r = 1.0, float g = 1.0, float b = 1.0);
 			RGBAImageI GetImageGray(float Y = 1.0);
             std::vector<std::array<float, 3>> GetImageYCbCr();
@@ -172,18 +191,5 @@ namespace Denoiser {
 
             std::shared_ptr<DecNode> rootNode;
         };
-    };
-
-    template<typename T>
-    struct Thresholder {
-        virtual void InplaceSoftThreshold(std::span<T> array);
-        virtual void InplaceHardThreshold(std::span<T> array);
-        virtual void SoftThreshold(std::span<T> array);
-        virtual void HardThreshold(std::span<T> array);
-    };
-
-    struct VisuShrink : public Thresholder<double> {
-		void InplaceSoftThreshold(std::span<double> array) override;
-		void SoftThreshold(std::span<double> array) override;
     };
 };
