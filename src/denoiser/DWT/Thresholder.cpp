@@ -1,11 +1,19 @@
 #include "denoiser.h"
+#include <iostream>
 
-void Denoiser::VisuShrink::InplaceSoftThreshold(std::span<double> array) {
-	std::vector<double> copyForMedian = std::vector<double>(array.size());
+void Denoiser::VisuShrink::SoftThreshold(std::span<float> array) {
+	//No need to be perfect median, approx median.
+	float median = MathsUtils::QuickSelect<float>(
+		array, 
+		0, 
+		(array.size() - 1), 
+		(array.size() / 2)); 
 
-	//Copies the array into a temporary buffer
-	//Since quickselect is inplace and modifies the array
-	memmove(&copyForMedian[0], &array[0], array.size() * sizeof(double));
+	int M = array.size();
+	float standardDeviation = std::abs(median / 0.06745f);
+	float threshold = standardDeviation * std::sqrt(2.0f * std::log(static_cast<float>(M)));
 
+	MathsUtils::SoftThreshold(array, threshold);
 
+	std::cout << threshold << " Threshold" << std::endl;
 }

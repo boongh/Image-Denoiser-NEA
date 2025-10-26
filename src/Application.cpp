@@ -737,20 +737,32 @@ void Application::DEBUGRUN(const char* infiles) {
         auto imGray1 = dectree.GetImageRGB(1, 0, 0);
         auto pixel1 = imGray1.GetPixel(1213, 218);
 
-        ImageBuffer.push_back(imGray1);
 
 		std::print("Pixel at (1213, 218): R={}, G={}, B={}, A={}\n", pixel1.r, pixel1.g, pixel1.b, pixel1.a);
 
         std::cout << (dectree.ExpandTree()) << "\n";
-
         std::cout << dectree.CollapseTree() << "\n";
 
 		auto imGray2 = dectree.GetImageRGB(1, 0, 0);
-        auto pixel2 = imGray2.GetPixel(1213 + 3, 218 );
+        auto pixel2 = imGray2.GetPixel(1213, 218 );
 
-        std::print("Pixel at (1213 + 3, 218 + 3): R={}, G={}, B={}, A={}\n", pixel2.r, pixel2.g, pixel2.b, pixel2.a);
+        std::print("Pixel at (1213, 218): R={}, G={}, B={}, A={}\n", pixel2.r, pixel2.g, pixel2.b, pixel2.a);
 
+        std::cout << (dectree.ExpandTree()) << "\n";
+
+        Denoiser::VisuShrink denoiserInstance = Denoiser::VisuShrink();
+
+        dectree.Thresholding(denoiserInstance);
+        std::cout << dectree.CollapseTree() << "\n";
+
+        auto imGray3 = dectree.GetImageRGB(1, 0, 0);
+        pixel2 = imGray2.GetPixel(1213, 218);
+        std::print("Pixel at (1213, 218): R={}, G={}, B={}, A={}\n", pixel2.r, pixel2.g, pixel2.b, pixel2.a);
+
+        ImageBuffer.push_back(imGray1);
         ImageBuffer.push_back(imGray2);
+        ImageBuffer.push_back(imGray3);
+
     }
 
     for (int i = 0; i < ImageBuffer.size(); ++i) {

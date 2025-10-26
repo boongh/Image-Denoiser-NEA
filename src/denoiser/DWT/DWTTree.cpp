@@ -39,9 +39,25 @@ void TreeCollapseHelper(std::shared_ptr<Denoiser::DWT::DecNode> node, int curren
 	}
 }
 
+/// <summary>
+/// Collapse tree with thresholding at each high level
+/// </summary>
+/// <param name="node"></param>
+/// <param name="currentLevel"></param>
+/// <param name="thresolder"></param>
+/// <param name="mode"></param>
+void TreeCollapseAutoThreshold(std::shared_ptr<Denoiser::DWT::DecNode> node, int currentLevel, Denoiser::Thresholder<float>& thresholder, Denoiser::DWT::DecNode::ReconMode mode = Denoiser::DWT::DecNode::ReconMode::Full) {
+	if (node->low != nullptr && node->high != nullptr) {
+		TreeCollapseHelper(node->low, currentLevel + 1, Denoiser::DWT::DecNode::ReconMode::Full);
+		TreeCollapseAutoThreshold(node->high, currentLevel + 1, thresholder, Denoiser::DWT::DecNode::ReconMode::Full);
+		thresholder.SoftThreshold(std::span<float>(node->high->brightnessData));
+		node->RecomposeNode(mode);
+	}
+}
+
 int Denoiser::DWT::DecTree::ExpandTree()
 {
-	const int decimationLevel = 3;
+	const int decimationLevel = 1;
 	TreeExpandHelper(rootNode, -1, decimationLevel);
 	return 0;
 }
@@ -50,6 +66,11 @@ int Denoiser::DWT::DecTree::CollapseTree(DecNode::ReconMode mode)
 {
 	TreeCollapseHelper(rootNode, -1, Denoiser::DWT::DecNode::ReconMode::Full);
 	return 0;
+}
+
+void Denoiser::DWT::DecTree::Thresholding(Thresholder<float>& thresholder)
+{
+	TreeCollapseAutoThreshold(rootNode, -1, thresholder, Denoiser::DWT::DecNode::ReconMode::Full);
 }
 
 RGBAImageI Denoiser::DWT::DecTree::GetImageRGB(float Y, float Cb, float Cr, float r, float g, float b) {
