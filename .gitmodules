@@ -17,3 +17,7 @@
 [submodule "testdata/cbsd68"]
 	path = testdata/cbsd68
 	url = https://github.com/clausmichele/CBSD68-dataset.git
+[submodule "Dependencies/imGui"]
+	path = Dependencies/imGui
+	url = https://github.com/ocornut/imgui.git
+	branch = docking
