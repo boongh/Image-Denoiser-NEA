@@ -35,40 +35,44 @@ namespace MathsUtils
 
     template <typename T>
     int partition(std::span<T> arr, int l, int r) {
-        int pivotValue = arr[r];
-        int currentIndex = l;
-        for (int leftWindow = l; leftWindow <= r - 1; leftWindow++) {
-            if (arr[leftWindow] <= pivotValue) {
-                std::swap(arr[currentIndex], arr[leftWindow]);
-                currentIndex++;
+        int x = arr[r], i = l;
+        for (int j = l; j <= r - 1; j++) {
+            if (arr[j] <= x) {
+                std::swap(arr[i], arr[j]);
+                i++;
             }
         }
-        std::swap(arr[currentIndex], arr[r]);
-        return currentIndex;
+        std::swap(arr[i], arr[r]);
+        return i;
     }
 
 	template <typename T>
-    T QuickSelect(std::span<T> dataSpan, int left, int right, int kth) {
+    T QuickSelect(std::span<T> dataSpan, int left, int right, int k) {
 
-		//Make copy to not modify original data
-		std::vector<T> copy(dataSpan.begin(), dataSpan.end());
+        // If k is smaller than the number of elements
+        // in the array.
+        if (k > 0 && k <= right - left + 1) {
 
-        //If K is in range
-        if(kth > 0 && kth <= right - left + 1) {
-            int index = MathsUtils::partition<T>(std::span<T>(copy), left, right);
-            if (index - left == kth - 1) {
-                return copy[index];
-            }
-            else if (index - left > kth - 1) {
-                return MathsUtils::QuickSelect<T>(std::span<T>(copy), left, index - 1, kth);
-            }
-            else {
-                return MathsUtils::QuickSelect<T>(std::span<T>(copy), index + 1, right, kth - index + left - 1);
-            }
-		}
+            // Partition the array around the last 
+            // element and get the position of the pivot 
+            // element in the sorted array.
+            int index = MathsUtils::partition(dataSpan, left, right);
 
-        //Out of range
-        return -1;
+            // If position is the same as k.
+            if (index - left == k - 1)
+                return dataSpan[index];
+
+            // If position is more, recur for the left subarray.
+            if (index - left > k - 1)
+                return MathsUtils::QuickSelect(dataSpan, left, index - 1, k);
+
+            // Else recur for the right subarray.
+            return MathsUtils::QuickSelect(dataSpan, index + 1, right,
+                k - index + left - 1);
+        }
+
+        // If k is more than the number of elements in the array.
+        return dataSpan[0];
     }
 
     /// <summary>

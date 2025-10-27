@@ -110,6 +110,8 @@ public:
 class Application {
 public:
 
+    bool refresh = false;
+
     struct FilterParameters {
         struct BilateralFilterParameters {
             float sigmaSpatial = 0.2f;
@@ -135,8 +137,16 @@ public:
 			}
         };
 
+        struct DWTParameters {
+            int decimationLevel = 1;
+            void Reset() {
+                decimationLevel = 1;
+            }
+        };
+
 		BilateralFilterParameters BFParameter;
 		SmoothFilterParameters SFParameter;
+		DWTParameters DWTParameter;
     };
 
     enum RenamingScheme
@@ -164,17 +174,27 @@ public:
 
     void ImportFiles(std::span<std::string> paths);
 
-    void SmoothFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends);
+#pragma region Denoiser Caller
+
+    void SmoothFilter(std::shared_ptr<ImageEntry> image);
     void BatchSmoothFilter();
 
-    void BilateralFilter(std::shared_ptr<ImageEntry> image, std::string nameExtends);
+    void BilateralFilter(std::shared_ptr<ImageEntry> image);
+    void BatchBilateralFilter();
+
+	void DWTDenoise(std::shared_ptr<ImageEntry> image);
+	void BatchDWTDenoise();
+
+#pragma endregion
+
+
 
     std::filesystem::path ExtendsFileName(std::filesystem::path file, std::string extends);
 private:
 
     int InitWindow(GLFWwindow*& windowRet);
     static void glfw_error_callback(int error, const char* description);
-    void BuildDockLayout();
+    void BuildDock();
 
     int ImageSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
 

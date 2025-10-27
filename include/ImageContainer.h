@@ -86,6 +86,8 @@ public:
 	/// <returns></returns>
 	std::span<const PixelRGBA> ReadImageData() const;
 
+	std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>> ReadWriteImageData();
+
 	/// <summary>
 	/// Check if the pixel is a valid coordinate
 	/// </summary>
@@ -252,6 +254,9 @@ public:
 	std::string GetPath(int id) const;
 	std::filesystem::path GetPath_path(int id) const;
 	ImVec2 GetDim(int id) const;
+
+	void RefreshRenderer(std::shared_ptr<ImageEntry> imageEntry);
+
 private:
 	//WIP
 

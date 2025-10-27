@@ -127,7 +127,3 @@ void Denoiser::GaussianBlur(std::span<const PixelRGBA> src, std::span<PixelRGBA>
 
 #endif
 }
-
-void Denoiser::DWT(std::span<const PixelRGBA> src, std::span<PixelRGBA>& dst, unsigned int width, unsigned int height){
-	return;
-}

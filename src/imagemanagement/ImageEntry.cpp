@@ -33,6 +33,14 @@ std::span<const PixelRGBA> ImageEntry::ReadImageData() const {
 	return std::span<const PixelRGBA>(imageData.data.data(), imageData.data.size());
 }
 
+std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>> ImageEntry::ReadWriteImageData()
+{
+	return std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>>{
+		std::unique_lock<std::shared_mutex>(lockstate),
+			std::span<PixelRGBA>(imageData.data.data(), imageData.data.size())
+	};
+}
+
 ///< !-- - ImageEntry Class--->
 
 bool ImageEntry::CheckBound(size_t x, size_t y) const {

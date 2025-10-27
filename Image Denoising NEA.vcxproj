@@ -171,6 +171,7 @@
     <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp" />
     <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp" />
     <ClCompile Include="Dependencies\tinyfiledialogs\tinyfiledialogs.c" />
+    <ClCompile Include="src\denoiser\DWT\DWTDenoiser.cpp" />
     <ClCompile Include="src\denoiser\DWT\DWTTree.cpp" />
     <ClCompile Include="src\denoiser\DWT\DWTNode.cpp" />
     <ClCompile Include="src\denoiser\DWT\Thresholder.cpp" />
