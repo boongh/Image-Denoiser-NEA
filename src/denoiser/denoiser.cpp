@@ -10,9 +10,10 @@
 #define doBackward 1
 #define doDivide 0
 
-std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strn)
+int Denoiser::SmoothLF(std::span<PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strn)
 {
-	std::vector<PixelRGBA> dst = std::vector<PixelRGBA>(src.size());
+
+	std::vector<PixelRGBA> dst = std::vector<PixelRGBA>(src.begin(), src.end());
 	int xPos = 0;
 	int yPos = 0;
 
@@ -47,8 +48,8 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 			}
 #else
 
-			for (int y = - (int)halfHeight; y <= halfHeight; y++) {
-				for (int x = - (int)halfWidth; x <= halfWidth; x++) {
+			for (int y = -(int)halfHeight; y <= halfHeight; y++) {
+				for (int x = -(int)halfWidth; x <= halfWidth; x++) {
 					int actX = x + xPos;
 					int actY = y + yPos;
 
@@ -68,7 +69,7 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 #ifdef DEBUG	
 			if (cum == 0) {
 				printf("Latest pixel %d before crash (%d, %d, %d) with count %d", pixelpos, sumR, sumG, sumB, cum);
-				return std::vector<PixelRGBA>(0);
+				return -1;
 			}
 #endif // DEBUG
 
@@ -83,14 +84,16 @@ std::vector<PixelRGBA> Denoiser::SmoothLF(std::span<const PixelRGBA> src, unsign
 			);
 
 		}
-		return dst;
+
+		memcpy(src.data(), dst.data(), width * height * sizeof(PixelRGBA));
+		return 0;
 	}
 	catch (std::exception e) {
-		return dst;
+		return -1;
 	}
 }
 
-std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strnSpatial, double strnIntensity) {
+int Denoiser::BilateralFilter(std::span<const PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strnSpatial, double strnIntensity) {
 	auto denoisedimage = std::vector<PixelRGBA>(src.size());
 
 	double inverseSpatial = 1.0 / strnSpatial;
@@ -222,7 +225,28 @@ std::vector<PixelRGBA> Denoiser::BilateralFilter(std::span<const PixelRGBA> src,
 		denoisedimage[pixelnum].b = static_cast<uint8_t>(sumB / sumBw);
 	}
 
-	return denoisedimage;
+
+	memcpy((void*)src.data(), (void*)denoisedimage.data(), sizeof(PixelRGBA)* src.size());
+	return 0;
+}
+
+int Denoiser::DWT(std::span<PixelRGBA> src, unsigned int width, unsigned int height, int decimationLevel) {
+	Denoiser::DWT::DecTree dectree = Denoiser::DWT::DecTree(src, width, height);
+
+	dectree.ExpandTree(decimationLevel);
+
+	//Initialize thresholder
+	Denoiser::VisuShrink visu = Denoiser::VisuShrink();
+	dectree.Thresholding(visu);
+	dectree.CollapseTree();
+
+	auto resultImage = dectree.GetImageRGB();
+
+
+	//Copies result into src (inplace)
+	memcpy((void*)src.data(), (void*)resultImage.data.data(), sizeof(PixelRGBA) * src.size());
+
+	return 0;
 }
 
 inline double Denoiser::Bilateral::RangeAttenuation(double distanceSquared, double inverseSD)

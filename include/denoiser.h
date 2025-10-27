@@ -13,6 +13,24 @@ namespace Denoiser {
 
     using namespace MathsUtils;
 
+    enum DenoiserAlgorithm {
+        AutoMode,
+        MeanLinearFiltering,
+        BilateralFiltering,
+        WaveletDenoising
+	};
+    
+    /// <summary>
+    /// This is a wrapper around denoisers 
+    /// Inplace denoising with various algorithms </summary>
+    /// <param name="image"></param>
+    /// <param name="param">Parameter of the filter
+    /// Packed in a map with string as the names</param>
+    /// <param name="algo">Enum choosing algo, which will read the corresponding parameter will </param>
+    int Denoiser(RGBAImageI& image, std::unordered_map<std::string, std::string> param, DenoiserAlgorithm algo = AutoMode);
+
+	std::unordered_map<std::string, std::string> GetAvailableParameters(DenoiserAlgorithm algo);
+
     template<typename T>
     struct Thresholder {
         virtual void SoftThreshold(std::span<T> array) {
@@ -34,12 +52,12 @@ namespace Denoiser {
 	/// <param name="width"></param>
 	/// <param name="height"></param>
 	/// <param name="strn"></param>
-	std::vector<PixelRGBA> SmoothLF(std::span<const PixelRGBA> src,
+	int SmoothLF(std::span<PixelRGBA> src,
 		unsigned int width, unsigned int height, 
 		int halfWidth, int halfHeight, 
 		double strn);
 
-	std::vector<PixelRGBA> BilateralFilter(std::span<const PixelRGBA> src,
+	int BilateralFilter(std::span<const PixelRGBA> src,
 		unsigned int width, unsigned int height,
 		int halfWidth, int halfHeight, double strnSpatial, double strnIntensity);
 
@@ -56,9 +74,9 @@ namespace Denoiser {
         unsigned int width, unsigned int height,
 		int halfWidth, int halfHeight, double strn);
 
-    void DWT(std::span<const PixelRGBA> src,
-        std::span<PixelRGBA>& dst,
-        unsigned int width, unsigned int height);
+    int DWT(std::span<PixelRGBA> src,
+        unsigned int width, unsigned int height,
+        int decimationLevel);
 
 
 	class Bilateral {
@@ -176,7 +194,7 @@ namespace Denoiser {
 
             DecTree(std::span<const PixelRGBA> src, unsigned int width, unsigned int height);
 
-            int ExpandTree();
+            int ExpandTree(int decimationLevel);
             int CollapseTree(DecNode::ReconMode mode = DecNode::ReconMode::Full);
 
             void Thresholding(Thresholder<float>& thresholder);

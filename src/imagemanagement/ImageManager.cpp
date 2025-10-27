@@ -158,4 +158,28 @@ ImVec2 ImageManager::GetDim(int id) const {
 	return ImVec2(static_cast<float>(image->GetWidth()), static_cast<float>(image->GetHeight()));
 }
 
+//
+void ImageManager::RefreshRenderer(std::shared_ptr<ImageEntry> imageEntry = nullptr)
+{
+	//Refresh data of renderer on GPU
+
+	//Refresh only one is specified
+	if(imageEntry != nullptr)
+	{
+		auto it = imageRenderers.find(imageEntry);
+		if (it != imageRenderers.end())
+		{
+			it->second->UnloadGPU();
+			it->second->LoadGPU();
+		}
+		return;
+	}
+	//Refresh all if not specified
+	for (auto const& [key, val] : imageRenderers)
+	{
+		val->UnloadGPU();
+		val->LoadGPU();
+	}
+}
+
 #pragma endregion
