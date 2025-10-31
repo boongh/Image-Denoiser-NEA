@@ -28,13 +28,13 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 
 
 	if (direction == 0) {
-		convolvedWidth = (width + 3) / 2;
+		convolvedWidth = (width + 4) / 2;
 		convolvedHeight = height;
 		horStride = 2;
 		vertStride = 1;
 	}
 	else {
-		convolvedHeight = (height + 3) / 2;
+		convolvedHeight = (height + 4) / 2;
 		convolvedWidth = width;
 		horStride = 1;
 		vertStride = 2;
@@ -135,7 +135,7 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	//Zero padding horizontally
 	if (direction == 0) {
 		for (int i = PosCompose(low->width - 1, upSampledHeight - 1, low->width); i >= 0; --i) {
-			
+
 			std::swap(low->brightnessData[2 * i], low->brightnessData[i]);
 			std::swap(high->brightnessData[2 * i], high->brightnessData[i]);
 
