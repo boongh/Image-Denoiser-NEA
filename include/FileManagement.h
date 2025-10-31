@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <filesystem>
+#include <FileFormats.h>
 
 enum ImageFormat {
 	FORMAT_JPEG,

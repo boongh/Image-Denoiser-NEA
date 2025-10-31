@@ -123,7 +123,7 @@
     <ClCompile Include="src\denoiser\DWT\DWTDenoiser.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\FileManagement\FileSystem.cpp">
+    <ClCompile Include="src\FileManagement\FileManagement.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

@@ -176,7 +176,7 @@
     <ClCompile Include="src\denoiser\DWT\DWTNode.cpp" />
     <ClCompile Include="src\denoiser\DWT\Thresholder.cpp" />
     <ClCompile Include="src\denoiser\FastBilateralApprox.cpp" />
-    <ClCompile Include="src\FileManagement\FileSystem.cpp" />
+    <ClCompile Include="src\FileManagement\FileManagement.cpp" />
     <ClCompile Include="src\ImageManagement\ImageManager.cpp" />
     <ClCompile Include="src\ImageManagement\ImageEntry.cpp" />
     <ClCompile Include="src\ImageManagement\ImageRenderer.cpp" />
