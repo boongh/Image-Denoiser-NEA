@@ -78,15 +78,6 @@
     <ClCompile Include="Dependencies\FileReader\src\Reader\WAVReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Dependencies\FileReader\src\Reader\ImageReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -124,6 +115,21 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\FileManagement\FileManagement.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\JPEGWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\PNGWriter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

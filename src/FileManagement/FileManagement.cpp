@@ -50,19 +50,26 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, std::shared_ptr<RGB
 	{
 	case FORMAT_JPEG:
 		for(auto& item : list) {
-			auto filepath = std::get<0>(item);
-			std::shared_ptr<RGBAImageI> imageptr = std::get<1>(item);
-			RGBAImageI image = *imageptr.get();
+			auto path = std::get<0>(item);
+			if (path.empty()) continue;
+			std::filesystem::create_directories(path.parent_path());
 			FileWriter::WriteJPEG(
-				filepath.string(),
-				image,
-				90
-				); // Quality set to 90
+				path.string(),
+				*std::get<1>(item).get(),
+				90); //Quality fixed at 90 for now
 		}
 		break;
 	case FORMAT_PNG:
 		break;
 	case FORMAT_QOI:
+		for (auto& item : list) {
+			auto path = std::get<0>(item);
+			if (path.empty()) continue;
+			std::filesystem::create_directories(path.parent_path());
+			FileWriter::WriteQOI(
+				path.string(),
+				*std::get<1>(item).get()); //Quality fixed at 90 for now
+		}
 		break;
 	default:
 		break;

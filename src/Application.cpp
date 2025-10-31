@@ -481,7 +481,7 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
 
 
         //Batch load
-        if (ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_L)) {
+        if (ImGui::Shortcut(ImGuiKey_S | ImGuiMod_Ctrl)) {
             ForAllSelectedImage([](std::shared_ptr<ImageEntry> image) {
                 std::thread thread([image]() {
                     if (image) {
@@ -615,7 +615,7 @@ int Application::Run() {
             ImVec2 pos = ImGui::GetCursorScreenPos();
 
             //Check shortcuts
-            if(ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_O)) {
+            if(ImGui::Shortcut(ImGuiKey_O | ImGuiMod_Ctrl)) {
 				OpenImageFile();
             }
             else if (ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_L)) {

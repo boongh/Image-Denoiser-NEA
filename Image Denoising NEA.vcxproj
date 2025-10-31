@@ -147,6 +147,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\JPEGWriter.cpp" />
+    <ClCompile Include="Dependencies\FileReader\src\Writer\PNGWriter.cpp" />
+    <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp" />
+    <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp" />
+    <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp" />
     <ClCompile Include="src\denoiser\denoiser.cpp" />
     <ClCompile Include="src\Application.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\FileFormatClass\FileFormats.cpp" />
@@ -156,9 +161,6 @@
     <ClCompile Include="Dependencies\FileReader\src\Reader\PPMReader.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Reader\QOIReader.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Reader\WAVReader.cpp" />
-    <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp" />
-    <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp" />
-    <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp" />
     <ClCompile Include="Dependencies\glad\src\glad.c" />
     <ClCompile Include="Dependencies\Imgui\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="Dependencies\Imgui\backends\imgui_impl_opengl3.cpp" />
