@@ -176,9 +176,10 @@
     <ClCompile Include="src\denoiser\DWT\DWTNode.cpp" />
     <ClCompile Include="src\denoiser\DWT\Thresholder.cpp" />
     <ClCompile Include="src\denoiser\FastBilateralApprox.cpp" />
-    <ClCompile Include="src\imagemanagement\ImageManager.cpp" />
-    <ClCompile Include="src\imagemanagement\ImageEntry.cpp" />
-    <ClCompile Include="src\imagemanagement\ImageRenderer.cpp" />
+    <ClCompile Include="src\FileManagement\FileSystem.cpp" />
+    <ClCompile Include="src\ImageManagement\ImageManager.cpp" />
+    <ClCompile Include="src\ImageManagement\ImageEntry.cpp" />
+    <ClCompile Include="src\ImageManagement\ImageRenderer.cpp" />
     <ClCompile Include="src\imguicustom\CustomWidget.cpp" />
     <ClCompile Include="src\imguicustom\ImGuiimageloaderOpenGL.cpp" />
     <ClCompile Include="src\main.cpp" />
@@ -215,6 +216,7 @@
     <ClInclude Include="include\ImageContainer.h" />
     <ClInclude Include="include\ImGuiimageloader.h" />
     <ClInclude Include="include\mathsutils.h" />
+    <ClInclude Include="include\FileManagement.h" />
     <ClInclude Include="src\utility\mathsutils.h" />
   </ItemGroup>
   <ItemGroup>

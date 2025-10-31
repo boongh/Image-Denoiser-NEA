@@ -90,16 +90,16 @@
     <ClCompile Include="Dependencies\FileReader\src\Reader\ImageReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imagemanagement\ImageManager.cpp">
+    <ClCompile Include="src\ImageManagement\ImageManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imagemanagement\ImageEntry.cpp">
+    <ClCompile Include="src\ImageManagement\ImageEntry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imagemanagement\ImageRenderer.cpp">
+    <ClCompile Include="src\ImageManagement\ImageRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\denoiser\denoiser.cpp">
@@ -121,6 +121,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\denoiser\DWT\DWTDenoiser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FileManagement\FileSystem.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -216,6 +219,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\utility\mathsutils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\FileManagement.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

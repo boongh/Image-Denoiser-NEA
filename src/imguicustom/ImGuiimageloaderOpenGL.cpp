@@ -41,38 +41,3 @@ bool UnloadImage_s(unsigned int& textureID) {
 	glDeleteTextures(1, &textureID);
 	return false;
 }
-
-bool SplitPaths(const std::string& multi, std::vector<std::string>& singlepaths)
-{
-	std::vector<std::string> paths;
-	std::stringstream ss(multi);
-	std::string token;
-	while (std::getline(ss, token, '|')) {
-		std::replace(token.begin(), token.end(), '\\', '/'); // optional normalization
-		singlepaths.push_back(token);
-	}
-	return true;
-}
-
-bool LoadMultipleImages(std::vector<unsigned int*>& textureID, std::vector<void*>& data, std::vector<unsigned int>& width, std::vector<unsigned int>& height, std::vector<unsigned int>& channels, int count)
-{
-	//Initialize return vals
-	textureID.clear();
-	width.clear();
-	height.clear();
-	channels.clear();
-
-
-
-
-	return true;
-}
-
-
-
-std::string normalizePath(const char* rawPath)
-{
-	std::string path(rawPath);
-	std::replace(path.begin(), path.end(), '\\', '/');
-	return path;
-}

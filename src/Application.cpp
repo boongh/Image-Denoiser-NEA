@@ -2,6 +2,7 @@
 #include <denoiser.h>
 #include <filesystem>
 #include <algorithm>
+#include "FileManagement.h"
 
 #ifdef DEBUG
 
@@ -173,23 +174,6 @@ void Application::BuildDock()
 
         ImGui::End();
     }
-}
-
-int Application::ImageSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths) {
-    // Load image with 4 channels
-    const char* file = OpenFileDialogue("Select an Image", formatfilter, filtercount);
-
-    if (file != NULL) {
-        std::cout << normalizePath(file) << "\n";
-
-        SplitPaths(normalizePath(file), paths); // Split the file path into components if needed
-
-        for (int i = 0; i < paths.size(); i++) {
-            std::cout << paths[i] << std::endl;
-        }
-        std::cout << paths.size() << " files selected." << std::endl;
-    }
-    return 0;
 }
 
 void Application::DisplayMenu() {
@@ -543,7 +527,7 @@ void Application::LoadAllImages() {
 
 void Application::OpenImageFile() {
     std::vector<std::string> paths;
-    ImageSelection(formatfilter, formatfiltercount, paths);
+    FileSelection(formatfilter, formatfiltercount, paths);
     ImportFiles(paths);
 }
 
@@ -906,7 +890,6 @@ void Application::BatchBilateralFilter()
         BilateralFilter(image);
     });
 }
-
 
 void Application::BatchDWTDenoise()
 {
