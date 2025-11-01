@@ -196,8 +196,6 @@ private:
     static void glfw_error_callback(int error, const char* description);
     void BuildDock();
 
-    int ImageSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
-
     void DisplayMenu();
     void SaveImageWindow();
     void DisplayDenoiseParamMenu();

@@ -85,8 +85,17 @@ public:
 	/// </summary>
 	/// <returns></returns>
 	std::span<const PixelRGBA> ReadImageData() const;
-
 	std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>> ReadWriteImageData();
+	
+
+	/// <summary>
+	/// Direct access to the RGBAImageI object with write permission
+	/// Rarely used since most functions deal with spans of PixelRGBA
+	/// </summary>
+	/// <returns></returns>
+	std::tuple<std::shared_lock<std::shared_mutex>, std::shared_ptr<const RGBAImageI>> RGBAIRead();
+	std::tuple<std::unique_lock<std::shared_mutex>, std::shared_ptr<RGBAImageI>> RGBAIReadWrite();
+
 
 	/// <summary>
 	/// Check if the pixel is a valid coordinate

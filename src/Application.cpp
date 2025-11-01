@@ -13,6 +13,7 @@
 
 #define TheGoodBlueColor ImVec4(64, 145, 190, 0)
 
+
 const char* Application::formatfilter[] = {
     "*.jpg",
     "*.png",
@@ -129,6 +130,8 @@ int Application::InitWindow(GLFWwindow*& windowRet) {
     // Our state
 
     // Main loop
+
+
 #ifdef __EMSCRIPTEN__
 // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
 // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
@@ -213,7 +216,50 @@ void Application::DisplayMenu() {
 
 void Application::SaveImageWindow() {
 
+	
+	static char buf[256] = "";
 
+	ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 400.0f));
+    ImGui::InputText("string", buf, IM_ARRAYSIZE(buf));
+    ImGui::PopItemWidth();
+
+	ImGui::SameLine();
+
+    if (ImGui::Button("Open with File Explorer")) {
+        const char* folder = OpenFolderDialogue("Choose destination directory");
+        if (folder != nullptr) {
+            std::string folderstr(folder);
+            size_t len = folderstr.length();
+            if (len + 1 < sizeof(buf)) {
+                strcpy_s(buf, folderstr.c_str());
+            }
+		}
+    }
+
+
+
+    if (ImGui::Button("Save Image As")) {
+		std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> imageSaveList;
+        for(int idx = 0; idx < Manager.GetImageCount(); idx++) {
+            if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
+
+                std::shared_ptr<ImageEntry> image = Manager.GetImage(idx);
+
+                std::unordered_map<std::string, validFormatter> formatter{
+                    {"\\[FILENAME\\]", [&]() {
+                          return image->GetFileName().string(); }}
+                };
+
+                std::filesystem::path filepath = std::filesystem::path(buf) / std::filesystem::path(image->GetFileName());
+                filepath = FormatPath(formatter, filepath);
+
+                auto readperm = image->RGBAIRead();
+
+                imageSaveList.push_back(std::make_tuple(filepath, *std::get<1>(readperm)));
+            }
+		}
+        SaveImages(imageSaveList, ImageFormat::FORMAT_JPEG);
+    }
 }
 
 void Application::DisplayDenoiseParamMenu() {
@@ -279,6 +325,10 @@ void Application::ForAllSelectedImage(const std::function<void(std::shared_ptr<I
 }
 
 void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
+
+	//Modified from the example multi-selection with deletion widget
+    //of ImGui example projects
+
     // Options
     enum WidgetType { WidgetType_Selectable, WidgetType_TreeNode };
     static bool use_clipper = true;
@@ -578,6 +628,13 @@ int Application::Run() {
 
         ImGui::End();
 
+
+        ImGui::Begin("SaveImage", nullptr);
+        {
+            SaveImageWindow();
+        }
+        ImGui::End();
+
 		ImGui::Begin("Preview", nullptr);
 
 
@@ -747,7 +804,7 @@ void Application::DEBUGRUN(const char* infiles) {
             ImageBuffer[i].data,
             static_cast<unsigned int>(ImageBuffer[i].width),
             static_cast<unsigned int>(ImageBuffer[i].height),
-            ("Test File Name ") + (n++));
+            ("Test File Name") + (n++));
     }
 
     

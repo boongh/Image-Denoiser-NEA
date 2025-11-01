@@ -132,6 +132,9 @@
     <ClCompile Include="Dependencies\FileReader\src\Writer\PNGWriter.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\stbwriterimpl.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Dependencies\emscripten\emscripten_mainloop_stub.h">

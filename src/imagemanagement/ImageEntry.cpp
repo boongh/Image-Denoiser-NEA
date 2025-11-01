@@ -41,6 +41,22 @@ std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>> ImageEntry
 	};
 }
 
+std::tuple<std::shared_lock<std::shared_mutex>, std::shared_ptr<const RGBAImageI>> ImageEntry::RGBAIRead()
+{
+	return std::tuple<std::shared_lock<std::shared_mutex>, std::shared_ptr<const RGBAImageI>>{
+		std::shared_lock<std::shared_mutex>(lockstate),
+			std::make_shared<const RGBAImageI>(imageData)
+	};
+}
+
+std::tuple<std::unique_lock<std::shared_mutex>, std::shared_ptr<RGBAImageI>> ImageEntry::RGBAIReadWrite()
+{
+	return std::tuple<std::unique_lock<std::shared_mutex>, std::shared_ptr<RGBAImageI>>{
+		std::unique_lock<std::shared_mutex>(lockstate),
+			std::make_shared<RGBAImageI>(imageData)
+	};
+}
+
 ///< !-- - ImageEntry Class--->
 
 bool ImageEntry::CheckBound(size_t x, size_t y) const {

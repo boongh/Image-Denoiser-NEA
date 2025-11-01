@@ -81,7 +81,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\eigen-3.4.0;$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PreprocessorDefinitions>DEBUG=1;%(PreprocessorDefinitions);_SILENCE_CXX23_DENORM_DEPRECATION_WARNING=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -99,7 +99,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\eigen-3.4.0;$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);_SILENCE_CXX23_DENORM_DEPRECATION_WARNING=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -117,7 +117,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\eigen-3.4.0;$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PreprocessorDefinitions>DEBUG=1;%(PreprocessorDefinitions);_SILENCE_CXX23_DENORM_DEPRECATION_WARNING=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;DEBUG</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -135,7 +135,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(ProjectDir)Dependencies\eigen-3.4.0;$(ProjectDir)Dependencies\tinyfiledialogs;$(ProjectDir)include;$(ProjectDir)Dependencies\FileReader\Include;$(ProjectDir)Dependencies\glfw\include;$(ProjectDir)Dependencies\emscripten;$(ProjectDir)Dependencies\usynergy;$(ProjectDir)Dependencies\stb;$(ProjectDir)Dependencies\multiFFT\include;$(ProjectDir)Dependencies\imgui\backends;$(ProjectDir)Dependencies\imgui;$(VULKAN_SDK)\Include;$(ProjectDir)Dependencies\glad\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp23</LanguageStandard>
-      <PreprocessorDefinitions>%(PreprocessorDefinitions);_SILENCE_CXX23_DENORM_DEPRECATION_WARNING=1</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;_SILENCE_ALL_CXX23_DEPRECATION_WARNINGS;</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -150,6 +150,7 @@
     <ClCompile Include="Dependencies\FileReader\src\Writer\JPEGWriter.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\PNGWriter.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp" />
+    <ClCompile Include="Dependencies\FileReader\src\Writer\stbwriterimpl.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp" />
     <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp" />
     <ClCompile Include="src\denoiser\denoiser.cpp" />

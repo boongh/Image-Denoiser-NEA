@@ -28,6 +28,22 @@ const char* OpenFileDialogue(const char* title, const char* const* filterPattern
 
 }
 
+const char* OpenFolderDialogue(const char* title)
+{
+    const char* folder = tinyfd_selectFolderDialog(
+        "Select a Folder",
+        ""
+    );
+    if (folder) {
+        std::cout << "Selected folder: " << folder << std::endl;
+        return folder;
+    }
+    else {
+        std::cout << "No folder selected." << std::endl;
+        return nullptr;
+    }
+}
+
 void LoadImageTooltipWidget(unsigned int textureID, ImVec2 dimension, ImVec2 widgetDim, ImVec4 bgColor, float zoom)
 {
     ImVec2 uv_min = ImVec2(0.0f, 0.0f);
