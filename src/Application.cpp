@@ -11,15 +11,8 @@
 
 #include <set>
 
-#define TheGoodBlueColor ImVec4(64, 145, 190, 0)
-
-
-const char* Application::formatfilter[] = {
-    "*.jpg",
-    "*.png",
-    "*.qoi",
-};
-
+namespace fs = std::filesystem;
+using slockmutex = std::shared_lock<std::shared_mutex>;
 
 Application::Application(ImVec4 backgroundColor) : g_DebugView(false), g_ImageListView(true), g_ImagePreview(true), g_docklefttemp(false), g_viewport_id(0){
     //Default format filter
@@ -215,12 +208,16 @@ void Application::DisplayMenu() {
 }
 
 void Application::SaveImageWindow() {
-
 	
 	static char buf[256] = "";
 
 	ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 400.0f));
-    ImGui::InputText("string", buf, IM_ARRAYSIZE(buf));
+    if (ImGui::InputText("string", buf, IM_ARRAYSIZE(buf))) {
+        //Remove space before and after slashes (Invalid spaces)
+        std::regex rgx(R"([\s\\]*(\\)[\s\\]*)");
+        auto regexBuffer = std::regex_replace(buf, rgx, "$1");
+        strcpy_s(buf, regexBuffer.c_str());
+    }
     ImGui::PopItemWidth();
 
 	ImGui::SameLine();
@@ -236,29 +233,58 @@ void Application::SaveImageWindow() {
 		}
     }
 
+    static int currentFormat = 0;
+
+    if (ImGui::Combo("Format", &currentFormat, formatfilter, formatfiltercount)) {
+        std::cout << "Yolo" << "\n";
+    }
 
 
     if (ImGui::Button("Save Image As")) {
-		std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> imageSaveList;
+
+        std::unordered_map<std::string, ValidFormatter> formatter{
+        {"\\[DATE\\(\(.*?\)\\)\\]", [](std::smatch match) {
+                time_t rawtime;
+                struct tm* timeinfo;
+
+                time(&rawtime);
+                timeinfo = localtime(&rawtime);
+                char buffer[256];
+                strftime(buffer, 256, match[1].str().c_str(), timeinfo);
+                return std::string(buffer);
+
+                return match.str();
+
+            }}
+        };
+
+		std::vector<std::tuple<fs::path, const RGBAImageI>> imageSaveList;
+
+        //Make sure to maintain read permission to lock writes
+        std::vector<std::tuple<slockmutex, std::shared_ptr<const RGBAImageI>>> readperms;
+        int count = 0;
+
         for(int idx = 0; idx < Manager.GetImageCount(); idx++) {
             if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
 
                 std::shared_ptr<ImageEntry> image = Manager.GetImage(idx);
+                readperms.push_back(image->RGBAIRead());
+                auto& readperm = readperms[count];
+                count++;
 
-                std::unordered_map<std::string, validFormatter> formatter{
-                    {"\\[FILENAME\\]", [&]() {
-                          return image->GetFileName().string(); }}
-                };
 
-                std::filesystem::path filepath = std::filesystem::path(buf) / std::filesystem::path(image->GetFileName());
+                //Insert extra, file dependent formatter after
+                formatter.insert({ "\\[FILENAME\\]", [&](std::smatch str) {
+                      return image->GetFileName().string(); } });
+
+                fs::path filepath = fs::path(buf) / fs::path(image->GetFileName());
                 filepath = FormatPath(formatter, filepath);
 
-                auto readperm = image->RGBAIRead();
 
                 imageSaveList.push_back(std::make_tuple(filepath, *std::get<1>(readperm)));
             }
 		}
-        SaveImages(imageSaveList, ImageFormat::FORMAT_JPEG);
+        SaveImages(imageSaveList, static_cast<ImageFormat>(currentFormat));
     }
 }
 
@@ -410,9 +436,9 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
                 const char* item_category = "";
                 char label[256];
 
-                std::filesystem::path item_path = Manager.GetPath_path(n);
-                std::filesystem::path filename = item_path.filename();
-                std::filesystem::path parentDir = item_path.parent_path();
+                fs::path item_path = Manager.GetPath_path(n);
+                fs::path filename = item_path.filename();
+                fs::path parentDir = item_path.parent_path();
 
                 std::string fileIdentifier = item_path.parent_path().filename().string() + "/" + item_path.filename().string();
 
@@ -675,7 +701,7 @@ int Application::Run() {
             if(ImGui::Shortcut(ImGuiKey_O | ImGuiMod_Ctrl)) {
 				OpenImageFile();
             }
-            else if (ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_L)) {
+            else if (ImGui::Shortcut(ImGuiKey_L | ImGuiMod_Ctrl)) {
 				LoadAllImages();
             }
             
@@ -743,14 +769,6 @@ void Application::DEBUGRUN(const char* infiles) {
     //Only runs in debug compile MSVC   
 #ifdef DEBUG
 
-    //Format filter
-    const char* formatfilter[] = {
-        "*.jpg",
-        "*.png",
-        "*.qoi",
-    };
-
-
     std::vector<std::string> paths;
 
     SplitPaths(infiles, paths);
@@ -759,8 +777,10 @@ void Application::DEBUGRUN(const char* infiles) {
         std::cout << s << "\n";
     }
 
+
     ImportFiles(paths);
     std::vector<RGBAImageI> ImageBuffer;
+
     for (auto image : Manager) {
 
         if (image == nullptr) {
@@ -807,7 +827,6 @@ void Application::DEBUGRUN(const char* infiles) {
             ("Test File Name") + (n++));
     }
 
-    
 #endif // DEBUG
 
     return;
@@ -952,8 +971,8 @@ void Application::BatchDWTDenoise()
 {
 }
 
-std::filesystem::path Application::ExtendsFileName(std::filesystem::path file, std::string extends) 
-    { return std::filesystem::path(file.parent_path().string() + "/" + file.stem().string() + extends + file.extension().string()); }
+fs::path Application::ExtendsFileName(fs::path file, std::string extends) 
+    { return fs::path(file.parent_path().string() + "/" + file.stem().string() + extends + file.extension().string()); }
 
 
 

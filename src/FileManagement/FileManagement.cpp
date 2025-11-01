@@ -11,6 +11,17 @@
 #include <string>
 #include <cstring>
 
+
+const char* formatfilter[] = {
+	"*.jpg",
+	"*.png",
+	"*.bmp",
+	"*.tga",
+	"*.qoi",
+};
+
+const int formatfiltercount = 5;
+
 int SplitPaths(const std::string& multi, std::vector<std::string>& singlepaths)
 {
 	std::vector<std::string> paths;
@@ -47,68 +58,159 @@ int FileSelection(const char* const* formatfilter, unsigned int filtercount, std
 	return 0;
 }
 
-void PrepFilePath(std::filesystem::path& path)
+/// <summary>
+/// Validate and prepare path by removing spaces and appending (number) if file exists
+/// </summary>
+/// <param name="path"></param>
+/// <returns></returns>
+int PrepFilePath(std::filesystem::path& path)
 {
-	namespace fs = std::filesystem;
-	std::filesystem::create_directories(path.parent_path());
-	auto filename = path.stem();
-	auto extension = path.extension();
+	try {
+		namespace fs = std::filesystem;
 
-	//Append (number) at the end of the file name if file exists
-	//Try until u long max
-	//Which is basically impossible to reach with a normal computer
-	if (fs::exists(path)) {
-		for (unsigned long i = 1; i < ULONG_MAX; i++) {
-			path.replace_filename(filename.string() + "(" + std::to_string(i) + ")" + extension.string());
-			if (!fs::exists(path)) {
-				break;
+		//Remove space before and after slashes (Invalid spaces)
+		std::regex rgx(R"([\s\\]*(\\)[\s\\]*)");
+		path = std::regex_replace(path.string(), rgx, "$1");
+
+		fs::create_directories(path.parent_path());
+		auto filename = path.stem();
+		auto extension = path.extension();
+
+		//Append (number) at the end of the file name if file exists
+		//Try until u long max
+		//Which is basically impossible to reach with a normal computer
+		if (fs::exists(path)) {
+			for (unsigned long i = 1; i < ULONG_MAX; i++) {
+				path.replace_filename(filename.string() + "(" + std::to_string(i) + ")" + extension.string());
+				if (!fs::exists(path)) {
+					break;
+				}
 			}
 		}
+
+		return 0;
 	}
+	catch (int error) {
+		return error;
+	}
+}
+
+std::string RegexReplacement(
+	const std::string& input,
+	const std::regex regexFormats,
+	const ValidFormatter formatter
+) {
+	std::string result = "";
+	std::smatch match;
+	auto index = input.cbegin();
+
+	while (std::regex_search(index, input.end(), match, regexFormats)) {
+		
+		result += match.prefix().str();
+
+		if (formatter) result += formatter(match);
+		else result += match.str();
+
+		//Increment start index to just after the previous match
+		index += match.str().length() + match.prefix().length();
+	}
+
+	//After last match append the rest of the string
+	result += std::string(index, input.cend());
+	return result;
 }
 
 int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> list, ImageFormat format)
 {
-	namespace fs = std::filesystem;
-	switch (format)
-	{
-	case FORMAT_JPEG:
-		for(auto& item : list) {
-			auto path = std::get<0>(item);
-			if (path.empty()) continue;
+	try {
+		switch (format)
+		{
+		case FORMAT_JPEG:
+			for (auto& item : list) {
+				auto path = std::get<0>(item);
+				if (path.empty()) continue;
 
-			path.replace_extension(".jpg");
+				path.replace_extension(".jpg");
 
-			PrepFilePath(path);
+				PrepFilePath(path);
 
-			FileWriter::WriteJPEG(
-				path.string(),
-				std::get<1>(item),
-				90); //Quality fixed at 90 for now
-			std::cout << "Saved " << path.string() << "\n";
+				FileWriter::WriteJPEG(
+					path.string(),
+					std::get<1>(item),
+					90); //Quality fixed at 90 for now
+				std::cout << "Saved " << path.string() << "\n";
+			}
+			break;
+		case FORMAT_PNG:
+			for (auto& item : list) {
+				auto path = std::get<0>(item);
+				if (path.empty()) continue;
+
+				path.replace_extension(".png");
+
+				PrepFilePath(path);
+
+				FileWriter::WritePNG(
+					path.string(),
+					std::get<1>(item));
+				std::cout << "Saved " << path.string() << "\n";
+			}
+			break;
+		case FORMAT_BMP:
+			for (auto& item : list) {
+				auto path = std::get<0>(item);
+				if (path.empty()) continue;
+
+				path.replace_extension(".bmp");
+
+				PrepFilePath(path);
+
+				FileWriter::WriteBMP(
+					path.string(),
+					std::get<1>(item));
+				std::cout << "Saved " << path.string() << "\n";
+			}
+			break;
+
+		case FORMAT_TGA:
+			for (auto& item : list) {
+				auto path = std::get<0>(item);
+				if (path.empty()) continue;
+
+				path.replace_extension(".tga");
+
+				PrepFilePath(path);
+
+				FileWriter::WriteTGA(
+					path.string(),
+					std::get<1>(item));
+				std::cout << "Saved " << path.string() << "\n";
+			}
+			break;
+		case FORMAT_QOI:
+			for (auto& item : list) {
+				auto path = std::get<0>(item);
+				if (path.empty()) continue;
+
+				path.replace_extension(".qoi");
+
+				PrepFilePath(path);
+
+				FileWriter::WriteQOI(
+					path.string(),
+					std::get<1>(item));
+				std::cout << "Saved " << path.string() << "\n";
+			}
+			break;
+		default:
+			break;
 		}
-		break;
-	case FORMAT_PNG:
-		break;
-	case FORMAT_QOI:
-		for (auto& item : list) {
-			auto path = std::get<0>(item);
-			if (path.empty()) continue;
-
-			path.replace_extension(".qoi");
-
-			PrepFilePath(path);
-
-			FileWriter::WriteQOI(
-				path.string(),
-				std::get<1>(item));
-			std::cout << "Saved " << path.string() << "\n";
-		}
-		break;
-	default:
-		break;
+		return 0;
 	}
-	return 0;
+	catch (int err) {
+		return err;
+	}
+	
 }
 
 /// <summary>
@@ -117,22 +219,15 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> 
 /// <param name="regexFormats"></param>
 /// <param name="path"></param>
 /// <returns></returns>
-std::filesystem::path FormatPath(std::unordered_map<std::string, validFormatter> regexFormats, std::filesystem::path path)
+std::filesystem::path FormatPath(std::unordered_map<std::string, ValidFormatter> regexFormats, std::filesystem::path path)
 {
 	std::filesystem::path returnPath = path;
 	for(auto& [key, func] : regexFormats) {
-		//Format time
-		time_t rawtime;
-		struct tm* timeinfo;
-		time(&rawtime);
-		timeinfo = localtime(&rawtime);
-
-		char buffer[256];
-		strftime(buffer, 256, returnPath.string().c_str(), timeinfo);
-		returnPath = std::string(buffer);
-
-		//Other formats
-		returnPath = std::regex_replace(returnPath.string(), std::regex(key), func()); // replace all instances of key with return val of the formatter function
+		returnPath = RegexReplacement(
+			returnPath.string(),
+			std::regex(key),
+			func
+		);
 	}
 	return returnPath;
 }

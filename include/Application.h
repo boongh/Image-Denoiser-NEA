@@ -42,6 +42,9 @@
 //Image container
 #include <ImageContainer.h>
 
+
+#define TheGoodBlueColor ImVec4(64, 145, 190, 0)
+
 // Extra functions to add deletion support to ImGuiSelectionBasicStorage
 class ExampleSelectionWithDeletion : public ImGuiSelectionBasicStorage {
 public:
@@ -149,26 +152,11 @@ public:
 		DWTParameters DWTParameter;
     };
 
-    enum RenamingScheme
-    {
-        ReuseName = 1,
-		AppendNumber = 2,
-        AppendDate = 4,
-        AppendTime = 8,
-
-    };
-
 	FilterParameters filterParameters;
 
-    //Format filter
-    const static char* formatfilter[];
-	const int formatfiltercount = 3;
 
-    Application(ImVec4 backgroundColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f));
+    Application(ImVec4 backgroundColor = TheGoodBlueColor);
     int Run();
-
-    template <typename ... Args>
-	bool ImGuiCheckShortcuts(Args &&...args);
 
     void DEBUGRUN(const char* infiles);
 
@@ -226,9 +214,3 @@ private:
     void LoadAllImages();
 	void OpenImageFile();
 };
-
-template<typename ...Args>
-inline bool Application::ImGuiCheckShortcuts(Args && ...args)
-{	
-    return (ImGui::IsKeyDown(args) && ...);
-}
