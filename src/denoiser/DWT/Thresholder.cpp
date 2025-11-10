@@ -13,6 +13,4 @@
 	float threshold = standardDeviation * std::sqrt(2.0f * std::log(static_cast<float>(M)));
 
 	MathsUtils::SoftThreshold(array, threshold);
-
-	std::cout << threshold << " Threshold" << std::endl;
 }

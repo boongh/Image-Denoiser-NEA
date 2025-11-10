@@ -9,11 +9,6 @@
 #pragma region Image Entry
 
 
-/// <summary>
-/// Initialization of an entry
-/// Requires manual LoadImage() to fully access it
-/// </summary>
-/// <param name="filePath"></param>
 ImageEntry::ImageEntry(const std::string& filePath)
 	: path(filePath), width(0), height(0), channels(0),
 	status(CompressionStatus::NOT_LOADED) {
@@ -213,6 +208,11 @@ int ImageEntry::DecompressImageData() {
 
 	status = CompressionStatus::DECOMPRESSED;
 	imageDataCompressed.clear();
+
+	imageData.width = width;
+	imageData.height = height;
+	imageData.channels = channels;
+
 	std::vector<uint8_t>().swap(imageDataCompressed);
 
 	return 0;

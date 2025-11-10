@@ -227,6 +227,7 @@ class ImageManager {
 public:
 	size_t GetImageCount();
 
+	//Iterator iterates through the image entries
 	std::vector<std::shared_ptr<ImageEntry>>::iterator begin();
 	std::vector<std::shared_ptr<ImageEntry>>::const_iterator begin() const;
 	std::vector<std::shared_ptr<ImageEntry>>::const_iterator cbegin() const;
@@ -267,7 +268,6 @@ public:
 	void RefreshRenderer(std::shared_ptr<ImageEntry> imageEntry);
 
 private:
-	//WIP
 
 	std::vector<std::shared_ptr<ImageEntry>> imageEntries;
 	std::unordered_map<std::shared_ptr<ImageEntry>, std::shared_ptr<ImageRenderer>> imageRenderers;

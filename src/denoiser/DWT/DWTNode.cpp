@@ -249,10 +249,12 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 				int dstPos = PosCompose(x, y, convolvedWidth);
 
+#ifdef DEBUG
 				if (dstPos < 0 || dstPos >= intermediate.size()) {
 					std::cout << "Error: dstPos out of bounds in DWT recomposition.\n";
 					return 1;
 				}
+#endif
 
 				intermediate[dstPos] += sum;
 			}

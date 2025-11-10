@@ -10,22 +10,15 @@
 #include <cassert>
 
 #include <FileReader.h>
-#include <QOIFormat.h>
+#include "QOIFormat.h"
 #include "ImageContainer.h"
-
-#ifndef  STB_IMAGE_IMPLEMENTATION 
-#include <stb_image.h>
-#define  STB_IMAGE_IMPLEMENTATION 
-#endif // ! STB_IMAGE_IMPLEMENTATION 
 
 #include <span>
 #include <set>
 
-
 #pragma endregion
 
 
-#pragma region Image Manager
 //<---Image Manager class implementation--->
 
 size_t ImageManager::GetImageCount() { return imageEntries.size(); }
@@ -181,5 +174,3 @@ void ImageManager::RefreshRenderer(std::shared_ptr<ImageEntry> imageEntry = null
 		val->LoadGPU();
 	}
 }
-
-#pragma endregion

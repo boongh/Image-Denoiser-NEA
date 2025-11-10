@@ -1,4 +1,5 @@
 #include "FileManagement.h"
+#include "Application.h"
 #include <string>
 #include <vector>
 #include <sstream>
@@ -8,9 +9,8 @@
 #include "FileFormats.h"
 #include "FileWriter.h"
 #include <regex>
-#include <string>
-#include <cstring>
 
+namespace fs = std::filesystem;
 
 const char* formatfilter[] = {
 	"*.jpg",
@@ -22,51 +22,87 @@ const char* formatfilter[] = {
 
 const int formatfiltercount = 5;
 
+
+/// <summary>
+/// Split paths outputted by tfd into
+/// </summary>
+/// <param name="multi"></param>
+/// <param name="singlepaths"></param>
+/// <returns></returns>
 int SplitPaths(const std::string& multi, std::vector<std::string>& singlepaths)
 {
+	std::string normpaths = NormalizePath(multi.c_str());
+
 	std::vector<std::string> paths;
-	std::stringstream ss(multi);
+	std::stringstream sstream(normpaths);
 	std::string token;
-	while (std::getline(ss, token, '|')) {
-		std::replace(token.begin(), token.end(), '\\', '/'); // optional normalization
+	while (std::getline(sstream, token, '|')) {
 		singlepaths.push_back(token);
 	}
 	return 0;
 }
 
-std::string normalizePath(const char* rawPath)
+
+/// <summary>
+/// Normalize windows path to UNIX on Windows system and vice versa
+/// Since C++ uses UNIX filesystem, but tfd returns Windows path on Windows system
+/// </summary>
+/// <param name="rawPath">Windows path</param>
+/// <returns>UNIX Path</returns>
+std::string NormalizePath(const char* rawPath)
 {
 	std::string path(rawPath);
+
+#if defined (__WIN32__) || defined (_WIN32) || defined (__CYGWIN32__)
+	//Windows path
 	std::replace(path.begin(), path.end(), '\\', '/');
+#endif // WIN_32
+
 	return path;
 }
 
+/// <summary>
+/// Open a file multi selection dialogue
+/// </summary>
+/// <param name="formatfilter"></param>
+/// <param name="filtercount"></param>
+/// <param name="paths">reference to store the paths selected</param>
+/// <returns>Success code
+/// 0 - Success
+/// Others - Failure
+/// </returns>
 int FileSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths)
 {
-	const char* file = OpenFileDialogue("Select an Image", formatfilter, filtercount);
+	try {
+		const char* file = OpenFileDialogue("Select an Image", formatfilter, filtercount);
 
-	if (file != NULL) {
-		std::cout << normalizePath(file) << "\n";
+		if (file != nullptr) {
 
-		SplitPaths(normalizePath(file), paths); // Split the file path into components if needed
+			SplitPaths(NormalizePath(file), paths); // Split the file path into components if needed
 
-		for (int i = 0; i < paths.size(); i++) {
-			std::cout << paths[i] << std::endl;
+			for (int i = 0; i < paths.size(); i++) {
+				LogtoAppTerminal(paths[i] + "\n");
+			}
+
+			LogtoAppTerminal(std::to_string(paths.size()) + " files selected." + "\n");
 		}
-		std::cout << paths.size() << " files selected." << std::endl;
+		return 0;
+
 	}
-	return 0;
+	catch (int err) {
+		return err;
+	}
 }
 
 /// <summary>
-/// Validate and prepare path by removing spaces and appending (number) if file exists
+/// Validate and prepare path by removing spaces and appending (numbers) if file exists
 /// </summary>
 /// <param name="path"></param>
 /// <returns></returns>
-int PrepFilePath(std::filesystem::path& path)
+int PrepFilePath(fs::path& path)
 {
 	try {
-		namespace fs = std::filesystem;
+		namespace fs = fs;
 
 		//Remove space before and after slashes (Invalid spaces)
 		std::regex rgx(R"([\s\\]*(\\)[\s\\]*)");
@@ -95,6 +131,15 @@ int PrepFilePath(std::filesystem::path& path)
 	}
 }
 
+
+/// <summary>
+/// Formats a string matched with a Regex
+/// Formatter takes in a match
+/// </summary>
+/// <param name="input"></param>
+/// <param name="regexFormats"></param>
+/// <param name="formatter"></param>
+/// <returns></returns>
 std::string RegexReplacement(
 	const std::string& input,
 	const std::regex regexFormats,
@@ -120,14 +165,14 @@ std::string RegexReplacement(
 	return result;
 }
 
-int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> list, ImageFormat format)
+
+int SaveImages(std::vector<std::tuple<fs::path, const RGBAImageI>> list, ImageFormat format)
 {
 	try {
 		switch (format)
 		{
 		case FORMAT_JPEG:
-			for (auto& item : list) {
-				auto path = std::get<0>(item);
+			for (auto& [path, image] : list) {
 				if (path.empty()) continue;
 
 				path.replace_extension(".jpg");
@@ -136,14 +181,13 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> 
 
 				FileWriter::WriteJPEG(
 					path.string(),
-					std::get<1>(item),
+					image,
 					90); //Quality fixed at 90 for now
-				std::cout << "Saved " << path.string() << "\n";
+				LogtoAppTerminal("Saved " + path.string() + "\n");
 			}
 			break;
 		case FORMAT_PNG:
-			for (auto& item : list) {
-				auto path = std::get<0>(item);
+			for (auto& [path, image] : list) {
 				if (path.empty()) continue;
 
 				path.replace_extension(".png");
@@ -152,13 +196,12 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> 
 
 				FileWriter::WritePNG(
 					path.string(),
-					std::get<1>(item));
-				std::cout << "Saved " << path.string() << "\n";
+					image);
+				LogtoAppTerminal("Saved " + path.string() + "\n");
 			}
 			break;
 		case FORMAT_BMP:
-			for (auto& item : list) {
-				auto path = std::get<0>(item);
+			for (auto& [path, image] : list) {
 				if (path.empty()) continue;
 
 				path.replace_extension(".bmp");
@@ -167,14 +210,13 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> 
 
 				FileWriter::WriteBMP(
 					path.string(),
-					std::get<1>(item));
-				std::cout << "Saved " << path.string() << "\n";
+					image);
+				LogtoAppTerminal("Saved " + path.string() + "\n");
 			}
 			break;
 
 		case FORMAT_TGA:
-			for (auto& item : list) {
-				auto path = std::get<0>(item);
+			for (auto& [path, image] : list) {
 				if (path.empty()) continue;
 
 				path.replace_extension(".tga");
@@ -183,13 +225,12 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> 
 
 				FileWriter::WriteTGA(
 					path.string(),
-					std::get<1>(item));
-				std::cout << "Saved " << path.string() << "\n";
+					image);
+				LogtoAppTerminal("Saved " + path.string() + "\n");
 			}
 			break;
 		case FORMAT_QOI:
-			for (auto& item : list) {
-				auto path = std::get<0>(item);
+			for (auto& [path, image] : list) {
 				if (path.empty()) continue;
 
 				path.replace_extension(".qoi");
@@ -198,8 +239,8 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> 
 
 				FileWriter::WriteQOI(
 					path.string(),
-					std::get<1>(item));
-				std::cout << "Saved " << path.string() << "\n";
+					image);
+				LogtoAppTerminal("Saved " + path.string() + "\n");
 			}
 			break;
 		default:
@@ -214,14 +255,14 @@ int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> 
 }
 
 /// <summary>
-/// Format that path with strftime and other custom formatters
+/// Format path with custom formatters
 /// </summary>
 /// <param name="regexFormats"></param>
 /// <param name="path"></param>
 /// <returns></returns>
-std::filesystem::path FormatPath(std::unordered_map<std::string, ValidFormatter> regexFormats, std::filesystem::path path)
+fs::path FormatPath(std::unordered_map<std::string, ValidFormatter> regexFormats, fs::path path)
 {
-	std::filesystem::path returnPath = path;
+	fs::path returnPath = path;
 	for(auto& [key, func] : regexFormats) {
 		returnPath = RegexReplacement(
 			returnPath.string(),
@@ -230,4 +271,11 @@ std::filesystem::path FormatPath(std::unordered_map<std::string, ValidFormatter>
 		);
 	}
 	return returnPath;
+}
+
+fs::path ExtendsFileName(fs::path file, std::string extends)
+{
+	fs::path newpath(file.parent_path() / (file.stem().string() + extends));
+	newpath.replace_extension(file.extension());
+	return newpath;
 }

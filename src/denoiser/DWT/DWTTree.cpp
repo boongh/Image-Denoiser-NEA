@@ -28,7 +28,6 @@ void TreeExpandHelper(std::shared_ptr<Denoiser::DWT::DecNode> node, int currentL
 		node->DecomposeNode(0);
 	}
 	TreeExpandHelper(node->low, currentLevel + 1, targetLevel);
-	TreeExpandHelper(node->high, currentLevel + 1, targetLevel);
 }
 
 void TreeCollapseHelper(std::shared_ptr<Denoiser::DWT::DecNode> node, int currentLevel, Denoiser::DWT::DecNode::ReconMode mode = Denoiser::DWT::DecNode::ReconMode::Full) {
@@ -84,11 +83,6 @@ void Denoiser::DWT::DecTree::Thresholding(Thresholder<float>& thresholder)
 
 RGBAImageI Denoiser::DWT::DecTree::GetImageRGB(float Y, float Cb, float Cr, float r, float g, float b) {
 	RGBAImageI dst(rootNode->width, rootNode->height, 4);
-
-	std::cout << "Rootnode: " << rootNode->width << " * " << rootNode->height << "\n";
-	std::cout << "Root Image: " << rootImage.size() << "\n";
-	std::cout << "brightnessData : " << rootNode->brightnessData.size() << "\n";
-	std::cout << "Dst: " << dst.data.size() << "\n";
 	for (int i = 0; i < dst.data.size(); ++i) {
 		std::array<float, 3> currPix = YCbCrtoLRGB(rootNode->brightnessData[i] * Y, rootImage[i][1] * Cb, rootImage[i][2] * Cr);
 
@@ -100,11 +94,6 @@ RGBAImageI Denoiser::DWT::DecTree::GetImageRGB(float Y, float Cb, float Cr, floa
 RGBAImageI Denoiser::DWT::DecTree::GetImageGray(float Y)
 {
 	RGBAImageI dst(rootNode->width, rootNode->height, 4);
-
-	std::cout << "Rootnode: " << rootNode->width << " * " << rootNode->height << "\n";
-	std::cout << "Root Image: " << rootImage.size() << "\n";
-	std::cout << "brightnessData : " << rootNode->brightnessData.size() << "\n";
-	std::cout << "Dst: " << dst.data.size() << "\n";
 	for (int i = 0; i < dst.data.size(); ++i) {
 		std::array<float, 3> currPix = YCbCrtoLRGB(rootNode->brightnessData[i] * Y, 0, 0);
 

@@ -13,24 +13,6 @@ namespace Denoiser {
 
     using namespace MathsUtils;
 
-    enum DenoiserAlgorithm {
-        AutoMode,
-        MeanLinearFiltering,
-        BilateralFiltering,
-        WaveletDenoising
-	};
-    
-    /// <summary>
-    /// This is a wrapper around denoisers 
-    /// Inplace denoising with various algorithms </summary>
-    /// <param name="image"></param>
-    /// <param name="param">Parameter of the filter
-    /// Packed in a map with string as the names</param>
-    /// <param name="algo">Enum choosing algo, which will read the corresponding parameter will </param>
-    int Denoiser(RGBAImageI& image, std::unordered_map<std::string, std::string> param, DenoiserAlgorithm algo = AutoMode);
-
-	std::unordered_map<std::string, std::string> GetAvailableParameters(DenoiserAlgorithm algo);
-
     template<typename T>
     struct Thresholder {
         virtual void SoftThreshold(std::span<T> array) {

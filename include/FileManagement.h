@@ -21,11 +21,12 @@ extern const char* formatfilter[];
 extern const int formatfiltercount;
 
 int SplitPaths(const std::string& multi, std::vector<std::string>& singlepaths);
-std::string normalizePath(const char* rawPath); 
+std::string NormalizePath(const char* rawPath); 
 int FileSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
 int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> list, ImageFormat format);
 std::filesystem::path FormatPath(std::unordered_map<std::string, ValidFormatter> formats, std::filesystem::path path);
 int PrepFilePath(std::filesystem::path& path);
+std::filesystem::path ExtendsFileName(std::filesystem::path file, std::string extends);
 std::string RegexReplacement(
 	const std::string& input,
 	const std::regex regexFormats,

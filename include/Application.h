@@ -24,9 +24,10 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
-#include <algorithm> // For std::max, std::min
-#include <iostream> // For std::cout, std::cerr
-#include <functional> // For std::function
+#include <algorithm>
+#include <iostream>
+#include <functional>
+#include <queue>
 
 //File read write lib
 
@@ -46,6 +47,7 @@
 #define TheGoodBlueColor ImVec4(64, 145, 190, 0)
 
 // Extra functions to add deletion support to ImGuiSelectionBasicStorage
+//Included in the ImGui examples
 class ExampleSelectionWithDeletion : public ImGuiSelectionBasicStorage {
 public:
 
@@ -110,9 +112,15 @@ public:
 };
 
 
+void LogtoAppTerminal(std::string logmsg);
+
+/// <summary>
+/// Wrapper class around the entire application to avoid global variables
+/// </summary>
 class Application {
 public:
 
+    static Application* currentApp;
     bool refresh = false;
 
     struct FilterParameters {
@@ -154,13 +162,15 @@ public:
 
 	FilterParameters filterParameters;
 
-
     Application(ImVec4 backgroundColor = TheGoodBlueColor);
+
     int Run();
 
     void DEBUGRUN(const char* infiles);
 
     void ImportFiles(std::span<std::string> paths);
+    void LogTerminal(std::string log);
+
 
 #pragma region Denoiser Caller
 
@@ -174,21 +184,30 @@ public:
 	void BatchDWTDenoise();
 
 #pragma endregion
-
-
-
-    std::filesystem::path ExtendsFileName(std::filesystem::path file, std::string extends);
 private:
 
     int InitWindow(GLFWwindow*& windowRet);
     static void glfw_error_callback(int error, const char* description);
+
+    /// <summary>
+    /// Build a dock inside the main OpenGL window
+    /// </summary>
     void BuildDock();
 
     void DisplayMenu();
-    void SaveImageWindow();
     void DisplayDenoiseParamMenu();
 	void DisplayImageList(std::shared_ptr<ImageEntry>& selection);
 	void DisplayImageSaveMenu();
+
+    void DisplayTerminal();
+
+    static const int terminalSizeLimit = 1 << 16;
+    char buf[terminalSizeLimit];
+    int currFirstCharOffset = terminalSizeLimit;
+
+    std::vector<std::string> logs;
+
+    void ShortcutChecks();
 
     void ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func);
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CustomWidget.h"
+#include "Application.h"
 #include "ImageContainer.h"
 #include "imgui.h"
 #include <tinyfiledialogs.h>
@@ -18,13 +19,16 @@ const char* OpenFileDialogue(const char* title, const char* const* filterPattern
     );
 
     if (file) {
+#ifdef DEBUG
         std::cout << "Selected file: " << file << std::endl;
-        return file;
+#endif
     }
     else {
+#ifdef DEBUG
         std::cout << "No file selected." << std::endl;
-        return nullptr;
+#endif
     }
+    return file;
 
 }
 
@@ -35,11 +39,11 @@ const char* OpenFolderDialogue(const char* title)
         ""
     );
     if (folder) {
-        std::cout << "Selected folder: " << folder << std::endl;
+        LogtoAppTerminal("Selected folder: " + std::string(folder) + "\n");
         return folder;
     }
     else {
-        std::cout << "No folder selected." << std::endl;
+        LogtoAppTerminal("No Folder Selected \n");
         return nullptr;
     }
 }
