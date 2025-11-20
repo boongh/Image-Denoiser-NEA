@@ -3,6 +3,8 @@
 #include <filesystem>
 #include <algorithm>
 #include "FileManagement.h"
+#include <imgui.h>
+#include <tinyfiledialogs.h>
 
 #ifdef DEBUG
 
@@ -634,6 +636,22 @@ void Application::ShortcutChecks()
     if (ImGui::Shortcut(ImGuiKey_S | ImGuiMod_Ctrl)) {
         LoadAllImages();
     }
+
+    if (ImGui::Shortcut(ImGuiKey_C | ImGuiMod_Ctrl, ImGuiInputFlags_RouteGlobal)) {
+        const char* imguiini[] = { ".ini" };
+        std::vector<std::string> path;
+        if (FileSelection("Select Config File", "", imguiini, 1, "ImGui Ini", false, path) == 0) {
+            ImGui::LoadIniSettingsFromDisk(path[0].c_str());
+        }
+    }
+
+    if (ImGui::Shortcut(ImGuiKey_C | ImGuiMod_Shift | ImGuiMod_Ctrl, ImGuiInputFlags_RouteGlobal)) {
+        const char* imguiini[] = { ".ini" };
+        const char* saveloc = tinyfd_saveFileDialog("Save Config", "", 1, imguiini, "ImGui Ini");
+        if (saveloc != NULL) {
+            ImGui::SaveIniSettingsToDisk(saveloc);
+        }
+    }
 }
 
 void Application::LoadAllImages() {
@@ -653,8 +671,8 @@ void Application::LoadAllImages() {
 
 void Application::OpenImageFile() {
     std::vector<std::string> paths;
-    FileSelection(formatfilter, formatfiltercount, paths);
-    ImportFiles(paths);
+    FileSelection("Select an image", "", formatfilter, formatfiltercount, "Image", true, paths);
+    ImportImages(paths);
 }
 
 
@@ -663,6 +681,10 @@ int Application::Run() {
 
     GLFWwindow* window;
     InitWindow(window);
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    std::cout << io.IniFilename << "\n";
 
     ImGuiID g_viewport_id = ImGui::GetMainViewport()->ID;
 
@@ -827,14 +849,14 @@ void Application::DEBUGRUN(const char* infiles) {
     SplitPaths(infiles, paths);
 
     //SplitPaths(infiles, paths);
-    ImportFiles(paths);
+    ImportImages(paths);
 
 #endif // DEBUG
 
     return;
 }
 
-void Application::ImportFiles(std::span<std::string> paths) {
+void Application::ImportImages(std::span<std::string> paths) {
     for (auto& path : paths) Manager.ImportFromFile(path);
 }
 

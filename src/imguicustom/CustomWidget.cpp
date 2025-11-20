@@ -10,7 +10,7 @@
 const char* OpenFileDialogue(const char* title, const char* const* filterPatterns, int filterCount)
 {
     const char* file = tinyfd_openFileDialog(
-        "Select an Image",
+        title,
         "",
         filterCount,
         filterPatterns,

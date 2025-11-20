@@ -9,6 +9,7 @@
 #include "FileFormats.h"
 #include "FileWriter.h"
 #include <regex>
+#include <tinyfiledialogs.h>
 
 namespace fs = std::filesystem;
 
@@ -62,7 +63,7 @@ std::string NormalizePath(const char* rawPath)
 }
 
 /// <summary>
-/// Open a file multi selection dialogue
+/// Wrapper around tinyfd that returns a vector of paths instead for easy management
 /// </summary>
 /// <param name="formatfilter"></param>
 /// <param name="filtercount"></param>
@@ -71,10 +72,24 @@ std::string NormalizePath(const char* rawPath)
 /// 0 - Success
 /// Others - Failure
 /// </returns>
-int FileSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths)
+int FileSelection(
+	const char* title,
+	const char* defaultPath,
+	const char* const* formatfilter,
+	int filtercount,
+	const char* singlefilterdesc,
+	int allowmultiselect,
+	std::vector<std::string>& paths)
 {
 	try {
-		const char* file = OpenFileDialogue("Select an Image", formatfilter, filtercount);
+		const char* file = tinyfd_openFileDialog(
+			title,
+			defaultPath,
+			filtercount,
+			formatfilter,
+			singlefilterdesc,
+			allowmultiselect
+		);
 
 		if (file != nullptr) {
 

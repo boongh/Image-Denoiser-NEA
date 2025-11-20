@@ -22,7 +22,27 @@ extern const int formatfiltercount;
 
 int SplitPaths(const std::string& multi, std::vector<std::string>& singlepaths);
 std::string NormalizePath(const char* rawPath); 
-int FileSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
+
+
+/// <summary>
+/// Open a file multi selection dialogue
+/// </summary>
+/// <param name="formatfilter"></param>
+/// <param name="filtercount"></param>
+/// <param name="paths">reference to store the paths selected</param>
+/// <returns>Success code
+/// 0 - Success
+/// Others - Failure
+/// </returns>
+int FileSelection(
+	const char* title,
+	const char* defaultPath,
+	const char* const* formatfilter,
+	int filtercount,
+	const char* singlefilterdesc,
+	int allowmultiselect,
+	std::vector<std::string>& paths);
+
 int SaveImages(std::vector<std::tuple<std::filesystem::path, const RGBAImageI>> list, ImageFormat format);
 std::filesystem::path FormatPath(std::unordered_map<std::string, ValidFormatter> formats, std::filesystem::path path);
 int PrepFilePath(std::filesystem::path& path);

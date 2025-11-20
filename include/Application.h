@@ -168,7 +168,7 @@ public:
 
     void DEBUGRUN(const char* infiles);
 
-    void ImportFiles(std::span<std::string> paths);
+    void ImportImages(std::span<std::string> paths);
     void LogTerminal(std::string log);
 
 
