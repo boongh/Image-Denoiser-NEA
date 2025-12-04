@@ -189,8 +189,8 @@ int ImageEntry::CompressImageData() {
 	if (QOICompress(std::span<uint8_t>(reinterpret_cast<uint8_t*>(imageData.data.data()), width * height * sizeof(PixelRGBA)), imageDataCompressed, width, height, channels) == -1) return -1;
 
 	status = CompressionStatus::COMPRESSED;
-	imageData.Clear();
-	std::vector<PixelRGBA>().swap(imageData.data);
+	std::vector<PixelRGBA> newvec = std::vector<PixelRGBA>(0);
+	imageData.data = newvec;
 
 	return 0;
 }
@@ -213,7 +213,9 @@ int ImageEntry::DecompressImageData() {
 	imageData.height = height;
 	imageData.channels = channels;
 
-	std::vector<uint8_t>().swap(imageDataCompressed);
+	std::vector<uint8_t> newvec = std::vector<uint8_t>(0);
+	imageDataCompressed = newvec;
+	
 
 	return 0;
 }

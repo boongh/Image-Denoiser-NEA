@@ -6,12 +6,17 @@
 
 #pragma region Image Renderer
 
-ImageRenderer::ImageRenderer(std::shared_ptr<ImageEntry> Image) : source(Image), textureID(0), textureLoaded(false), width(0), height(0) {}
+ImageRenderer::ImageRenderer(std::shared_ptr<ImageEntry> Image, int type) : type(type), source(Image), textureID(0), textureLoaded(false), width(0), height(0) {}
+
 ImageRenderer::~ImageRenderer() {
 	UnloadGPU();
 };
 
 void ImageRenderer::LoadGPU() {
+	if (type != 0) {
+		//No need to load GPU if is an error renderer
+		return;
+	}
 	if (!textureLoaded) {
 		width = source->GetWidth();
 		height = source->GetHeight();
@@ -36,7 +41,7 @@ void ImageRenderer::UnloadGPU() {
 /// <param name="bgColor"></param>
 /// <returns></returns>
 int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
-	if (textureLoaded) {
+	if (type == 0 && textureLoaded) {
 		ImVec2 uv_min = ImVec2(0.0f, 0.0f);
 		ImVec2 uv_max = ImVec2(1.0f, 1.0f);
 		ImGuiIO& io = ImGui::GetIO();
@@ -104,7 +109,9 @@ int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
 		}
 		return 0;
 	}
-	else return -1;
+	else {
+		ImGui::LabelText("ErrorLable", "Unexpected error type %d", type);
+	}
 }
 
 #pragma endregion

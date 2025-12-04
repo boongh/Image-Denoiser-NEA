@@ -587,6 +587,11 @@ void Application::DisplayImageSaveMenu()
     }
 }
 
+void Application::DisplayDebugMenu()
+{
+    ImGui::Checkbox("Use Memory Compression", &g_useCompress);
+}
+
 void Application::DisplayTerminal()
 {
 
@@ -684,7 +689,7 @@ int Application::Run() {
 
     ImGuiIO& io = ImGui::GetIO();
 
-    std::cout << io.IniFilename << "\n";
+    LogTerminal(io.IniFilename);
 
     ImGuiID g_viewport_id = ImGui::GetMainViewport()->ID;
 
@@ -730,6 +735,14 @@ int Application::Run() {
         {
             DisplayImageSaveMenu();
         }
+
+        ImGui::End();
+
+        ImGui::Begin("Debug", nullptr);
+        {
+            DisplayDebugMenu();
+        }
+
         ImGui::End();
 
         ImGui::Begin("Terminal", nullptr);
@@ -778,17 +791,26 @@ int Application::Run() {
 
             if (currselection != prevselection) {
                 if (currselection != nullptr) {
-                    if (currselection->LoadImage() == 0 && currselection->DecompressImageData() == 0) 
+                    int load = currselection->LoadImage();
+                    if (load != 0) {
+                        Manager.CreateErrorRenderer(currselection)->LoadGPU();
+                    }
+                    else if (load == 0 && currselection->DecompressImageData() == 0) 
                         Manager.CreateRenderer(currselection)->LoadGPU();
                     else {
-                        std::printf("Fail to load image file");
+                        LogTerminal("Fail to load image file");
                     }
                 }
                 if (prevselection != nullptr) {
                     Manager.DestroyRenderer(prevselection);
-                    if (prevselection->CompressImageData() != 0) {
-                        throw std::exception("COMPRESION FAILED");
-                    }
+                    if (g_useCompress) {
+                        int comp = prevselection->CompressImageData();
+
+                        //Only fails if compressor fails unrocoverably
+                        if (comp != 0) {
+                            throw std::exception("COMPRESION FAILED", comp);
+                        }
+                    };
                 }
                 prevselection = currselection;
             }

@@ -198,10 +198,11 @@ private:
     void DisplayDenoiseParamMenu();
 	void DisplayImageList(std::shared_ptr<ImageEntry>& selection);
 	void DisplayImageSaveMenu();
+    void DisplayDebugMenu();
 
     void DisplayTerminal();
 
-    static const int terminalSizeLimit = 1 << 16;
+    static const int terminalSizeLimit = 1 << 12;
     char buf[terminalSizeLimit];
     int currFirstCharOffset = terminalSizeLimit;
 

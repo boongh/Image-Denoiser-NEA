@@ -204,7 +204,7 @@ public:
 
 class ImageRenderer {
 public:
-	ImageRenderer(std::shared_ptr<ImageEntry> Image);
+	ImageRenderer(std::shared_ptr<ImageEntry> Image, int type = 0);
 	~ImageRenderer();
 
 	void LoadGPU();
@@ -212,6 +212,7 @@ public:
 
 	int DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor);
 
+	int type;
 private:
 	
 	unsigned int width;
@@ -250,8 +251,9 @@ public:
 	void Compress(int index);
 	void Decompress(int index);
 
-	std::shared_ptr<ImageRenderer>	CreateRenderer(int index);
+	std::shared_ptr<ImageRenderer>	CreateRenderer(int index, int errType = 0);
 	std::shared_ptr<ImageRenderer> CreateRenderer(std::shared_ptr<ImageEntry> item);
+	std::shared_ptr<ImageRenderer> CreateErrorRenderer(std::shared_ptr<ImageEntry> item);
 
 	std::shared_ptr<ImageRenderer> GetRenderer(int index);
 	std::shared_ptr<ImageRenderer> GetRenderer(std::shared_ptr<ImageEntry> imageEntry);

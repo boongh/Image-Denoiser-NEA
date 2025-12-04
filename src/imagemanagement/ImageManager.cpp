@@ -93,9 +93,9 @@ ImageEntry::CompressionStatus ImageManager::GetStatus(int index) const {
 void ImageManager::Compress(int index) { imageEntries[index]->CompressImageData(); }
 void ImageManager::Decompress(int index) { imageEntries[index]->DecompressImageData(); }
 
-std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(int index) {
+std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(int index, int errType) {
 	auto entry = imageEntries[index];
-	auto renderer = std::make_shared<ImageRenderer>(entry);
+	auto renderer = std::make_shared<ImageRenderer>(entry, errType);
 	imageRenderers.insert({ entry, renderer });
 	return renderer;
 }
@@ -103,7 +103,20 @@ std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(int index) {
 std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(std::shared_ptr<ImageEntry> item) {
 	auto it = std::find(imageEntries.begin(), imageEntries.end(), item);
 	if(it != imageEntries.end()) {
-		auto renderer = std::make_shared<ImageRenderer>(item);
+		auto renderer = std::make_shared<ImageRenderer>(item, 0);
+		imageRenderers.insert({ item, renderer });
+		return renderer;
+	}
+	else {
+		return nullptr; // ImageEntry not found
+	}
+}
+
+std::shared_ptr<ImageRenderer> ImageManager::CreateErrorRenderer(std::shared_ptr<ImageEntry> item)
+{
+	auto it = std::find(imageEntries.begin(), imageEntries.end(), item);
+	if (it != imageEntries.end()) {
+		auto renderer = std::make_shared<ImageRenderer>(item, -1);
 		imageRenderers.insert({ item, renderer });
 		return renderer;
 	}
