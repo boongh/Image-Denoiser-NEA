@@ -158,18 +158,19 @@ public:
             }
         };
 
-        BilateralFilterParameters BFParameter;
-		SmoothFilterParameters SFParameter;
-		DWTParameters DWTParameter;
+        BilateralFilterParameters BFParameter = BilateralFilterParameters();
+        SmoothFilterParameters SFParameter = SmoothFilterParameters();
+        DWTParameters DWTParameter = DWTParameters();
     };
 
-	FilterParameters filterParameters;
+	FilterParameters* filterParameters = new FilterParameters();
 
     Application(ImVec4 backgroundColor = TheGoodBlueColor);
 
     int Run();
 
     void DEBUGRUN(const char* infiles);
+    void BENCHMARKRUN(const char* infiles);
 
     void ImportImages(std::span<std::string> paths);
     void LogTerminal(std::string log);

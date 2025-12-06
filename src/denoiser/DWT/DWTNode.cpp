@@ -63,10 +63,10 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 
 	//Low pass first, high pass second
 	for (int pass = 0; pass <= 1; pass++) {
-		std::span<const double, 4> coefficients = std::span<const double, 4>(pass == 0 ? sym2.dec_lo.data() : sym2.dec_hi.data(), 4);
+		const std::array<const double, 4> coefficients = pass == 0 ? sym2.dec_lo : sym2.dec_hi;
 		std::shared_ptr<DecNode> dst = ((pass == 0) ? low : high);
-		for (int y = 0; y < convolvedHeight; y++) {
-			for (int x = 0; x < convolvedWidth; x++) {
+		for (unsigned int y = 0; y < convolvedHeight; y++) {
+			for (unsigned int x = 0; x < convolvedWidth; x++) {
 				double sum = 0;
 
 				for (int w = 0; w < 4; ++w) {
@@ -202,21 +202,8 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 		first = 1;
 	}
 
-	const int delay = 0; //sym2 delay
-	int delayx, delayy;
-
-	if (direction == 0) {
-		delayx = delay;
-		delayy = 0;
-	}
-	else {
-		delayx = 0;
-		delayy = delay;
-	}
-
-
 	for (int pass = first; pass <= stop; pass++) {
-		std::span<const double, 4> coefficients = std::span<const double, 4>(pass == 0 ? sym2.rec_lo.data() : sym2.rec_hi.data(), 4);
+		const std::array<const double, 4> coefficients = (pass == 0) ? sym2.rec_lo  : sym2.rec_hi;
 		std::vector<float> src = pass == 0 ? low->brightnessData : high->brightnessData;
 		for (int y = 0; y < convolvedHeight; y++) {
 			for (int x = 0; x < convolvedWidth; x++) {
@@ -224,16 +211,14 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 				for (int w = 0; w < filterLength; ++w) {
 
 #if doBackward
-					int xPos = direction == 0 ? x - w + delayx : x;
-					int yPos = direction == 1 ? y - w + delayy : y;
+					int xPos = x - w * (direction == 0);
+					int yPos = y - w * (direction == 1);
 
 #else// 1
 					int xPos = direction == 0 ? read_x + w : read_x;
 					int yPos = direction == 1 ? read_y + w : read_y;
 #endif
 
-					int bufferX = xPos;
-					int bufferY = yPos;
 					xPos = (xPos < 0) ? -xPos - 1 : (xPos >= upSampledWidth ? 2 * upSampledWidth - xPos - 1 : xPos);
 					yPos = (yPos < 0) ? -yPos - 1 : (yPos >= upSampledHeight ? 2 * upSampledHeight - yPos - 1 : yPos);
 

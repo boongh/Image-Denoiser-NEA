@@ -227,7 +227,7 @@ private:
 	unsigned int width;
 	unsigned int height;
 
-	const std::shared_ptr<ImageEntry> source;
+	std::shared_ptr<ImageEntry> source;
 	bool textureLoaded = false;
 	unsigned int textureID;
 };

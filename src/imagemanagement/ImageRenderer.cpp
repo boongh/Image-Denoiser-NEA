@@ -35,7 +35,7 @@ void ImageRenderer::LoadGPU() {
 
 		if (std::get<1>(img) == nullptr) {
 			//Error occured
-			source == nullptr;
+			source = nullptr;
 			tag = "error occured while loading to GPU";
 			return;
 		}
@@ -140,6 +140,7 @@ int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
 		ImGui::EndTooltip();
 	}
 
+	return 0;
 }
 
 #pragma endregion

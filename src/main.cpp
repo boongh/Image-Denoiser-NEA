@@ -10,7 +10,22 @@
 
 int main() {
 	Application app1;
+
+
+#ifdef DEBUG
+#ifdef BENCHMARK
+	app1.BENCHMARKRUN("E:/Programming/Projects/Image Denoising NEA/Image Denoising NEA/testdata/cbsd68/CBSD68/noisy10/0000.png");
+
+#endif // BENCHMARK
+
 	app1.DEBUGRUN(TESTDATAFULL);
+
+#endif // DEBUG
+
+#ifndef BENCHMARK
 	app1.Run();
+
+#endif // !BENCHMARK
+
 	return 0;
 }	

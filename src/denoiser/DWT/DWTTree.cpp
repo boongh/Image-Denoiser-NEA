@@ -12,7 +12,7 @@ Denoiser::DWT::DecTree::DecTree(std::span<const PixelRGBA> src, unsigned int wid
 	rootImage = std::vector<std::array<float, 3>>(width * height);
 	rootNode = std::make_shared<DecNode>(width, height, -1);
 
-	for (int index = 0; index < height * width; ++index) {
+	for (unsigned int index = 0; index < height * width; index++) {
 		//Convert to normalized YCbCr from normalized RGB
 		rootImage[index] = LRGBtoYCbCr(src[index].r / 255.0f, src[index].g / 255.0f, src[index].b / 255.0f);
 		rootAlpha[index] = src[index].a;
