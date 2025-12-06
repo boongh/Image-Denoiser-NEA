@@ -86,20 +86,29 @@ int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
 	scale = std::min(scale, 10.0f);
 	scale = std::max(scale, 0.1f);
 
-	targetScale = std::min(scale, 10.0f);
-	targetScale = std::max(scale, 0.1f);
+	targetScale = std::min(targetScale, 10.0f);
+	targetScale = std::max(targetScale, 0.1f);
 
 	ImVec2 displayImageDimension = ImVec2(width * scale, height * scale);
 	ImVec2 imgPixelPos = ImVec2((io.MousePos.x - pos.x) / scale, (io.MousePos.y - pos.y) / scale);
 
 
 	if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
-		targetScale -= (io.MouseWheel < 0) * targetScale / 5;
-		targetScale += (io.MouseWheel > 0) * targetScale / 5;
+		targetScale += std::copysign(1.0, io.MouseWheel) * (io.MouseWheel != 0) * targetScale / 5;
 	}
 
 	float deltaScale = targetScale - scale;
-	scale += deltaScale / 10;
+	scale += io.DeltaTime * deltaScale * 10;
+
+	if (deltaScale != 0) {
+		std::cout << "targetScale: " << targetScale << "\n";
+		std::cout << "deltaTargetScale: " << std::copysign(1.0, io.MouseWheel) * (io.MouseWheel != 0) * targetScale << "\n";
+		std::cout << "scale: " << scale << "\n";
+		std::cout << "deltaScale: " << deltaScale << "\n";
+		std::cout << "deltaScalePost: " << io.DeltaTime * deltaScale / 10 << "\n";
+
+	}
+
 
 	ImGui::ImageWithBg(textureID, displayImageDimension, uv_min, uv_max, bgColor);
 

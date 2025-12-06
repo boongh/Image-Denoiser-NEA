@@ -158,12 +158,12 @@ public:
             }
         };
 
-        BilateralFilterParameters BFParameter = BilateralFilterParameters();
-        SmoothFilterParameters SFParameter = SmoothFilterParameters();
-        DWTParameters DWTParameter = DWTParameters();
+        BilateralFilterParameters BFParameter;
+        SmoothFilterParameters SFParameter;
+        DWTParameters DWTParameter;
     };
 
-	FilterParameters* filterParameters = new FilterParameters();
+	FilterParameters filterParameters;
 
     Application(ImVec4 backgroundColor = TheGoodBlueColor);
 
@@ -206,11 +206,13 @@ private:
 
     void DisplayTerminal();
 
-    static const int terminalSizeLimit = 1 << 12;
-    char buf[terminalSizeLimit];
-    int currFirstCharOffset = terminalSizeLimit;
-
+    //Holds the actual logs
     std::vector<std::string> logs;
+
+    //Terminal display variables
+    static const int terminalSizeLimit = 1 << 12;
+    char* terminalbuffer;
+    int currFirstCharOffset = terminalSizeLimit;
 
     void ShortcutChecks();
 

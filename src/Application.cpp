@@ -23,7 +23,11 @@ Application::Application(ImVec4 backgroundColor) :
     g_docklefttemp(false), 
     g_viewport_id(0){
     //Default format filter
-
+    void* ptrmalloc = malloc(terminalSizeLimit);
+    if (ptrmalloc == nullptr) {
+        throw std::runtime_error("Malloc failed, you have a bigger problem");
+    }
+    terminalbuffer = static_cast<char*>(ptrmalloc);
     clearColor = backgroundColor;
     currentApp = this;
     return;
@@ -249,7 +253,7 @@ void Application::DisplayDenoiseParamMenu() {
 
 #pragma region DWT
         if (ImGui::Button("Start##DWT", ImVec2(0, 0)) && currselection != nullptr) {
-            filterParameters->DWTParameter.Reset();
+            filterParameters.DWTParameter.Reset();
             BatchDWTDenoise();
             refresh = true;
         }
@@ -261,13 +265,13 @@ void Application::DisplayDenoiseParamMenu() {
 #pragma region SF
         ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
 
-        ImGui::InputFloat("Strength##SF", &filterParameters->SFParameter.strength, 0.02f, 0.2f);
+        ImGui::InputFloat("Strength##SF", &filterParameters.SFParameter.strength, 0.02f, 0.2f);
         ImGui::PopItemWidth();
 
         ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
 
-        ImGui::InputInt("HalfWidth##SF", &filterParameters->SFParameter.kernelWidth, 1, 5);
-        ImGui::InputInt("HalfHeight##SF", &filterParameters->SFParameter.kernelHeight, 1, 5);
+        ImGui::InputInt("HalfWidth##SF", &filterParameters.SFParameter.kernelWidth, 1, 5);
+        ImGui::InputInt("HalfHeight##SF", &filterParameters.SFParameter.kernelHeight, 1, 5);
 
         ImGui::PopItemWidth();
 
@@ -285,14 +289,14 @@ void Application::DisplayDenoiseParamMenu() {
 
         ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
 
-        ImGui::InputFloat("Strength Spatial##BF", &filterParameters->BFParameter.sigmaSpatial, 1, 5);
-        ImGui::InputFloat("Strength Intensity##BF", &filterParameters->BFParameter.sigmaColor, 1, 5);
+        ImGui::InputFloat("Strength Spatial##BF", &filterParameters.BFParameter.sigmaSpatial, 1, 5);
+        ImGui::InputFloat("Strength Intensity##BF", &filterParameters.BFParameter.sigmaColor, 1, 5);
         ImGui::PopItemWidth();
 
         ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
-        ImGui::InputInt("Half Width##BF", &filterParameters->BFParameter.kernelWidth, 1, 5);
+        ImGui::InputInt("Half Width##BF", &filterParameters.BFParameter.kernelWidth, 1, 5);
         ImGui::SameLine();
-        ImGui::InputInt("Half Height##BF", &filterParameters->BFParameter.kernelHeight, 1, 5);
+        ImGui::InputInt("Half Height##BF", &filterParameters.BFParameter.kernelHeight, 1, 5);
         ImGui::PopItemWidth();
 
         if (ImGui::Button("Start", ImVec2(0, 0)) && currselection != nullptr) {
@@ -307,7 +311,7 @@ void Application::DisplayDenoiseParamMenu() {
 
 #pragma region DWT
         ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
-        ImGui::InputInt("Decomposition Level##DWT", &filterParameters->DWTParameter.decimationLevel, 1, 2);
+        ImGui::InputInt("Decomposition Level##DWT", &filterParameters.DWTParameter.decimationLevel, 1, 2);
         ImGui::PopItemWidth();
         if (ImGui::Button("Start##DWT", ImVec2(0, 0)) && currselection != nullptr) {
             BatchDWTDenoise();
@@ -694,13 +698,13 @@ void Application::DisplayTerminal()
     float availx = ImGui::GetContentRegionAvail().x;
     float availy = ImGui::GetContentRegionAvail().y;
 
-    ImGui::InputTextMultiline("Output", &buf[currFirstCharOffset], terminalSizeLimit - currFirstCharOffset, ImGui::GetContentRegionAvail(), ImGuiInputTextFlags_ReadOnly);
+    ImGui::InputTextMultiline("Output", &terminalbuffer[currFirstCharOffset], terminalSizeLimit - currFirstCharOffset, ImGui::GetContentRegionAvail(), ImGuiInputTextFlags_ReadOnly);
 }
 
 void Application::LogTerminal(std::string log) {
 
     //Clears terminal
-    memset(buf, '\n', terminalSizeLimit);
+    memset(terminalbuffer, '\n', terminalSizeLimit);
 
     logs.insert(logs.begin(), log);
     while (logs.size() > 1000) {
@@ -710,10 +714,12 @@ void Application::LogTerminal(std::string log) {
     size_t index = terminalSizeLimit;
 
     for (std::string logmsg : logs) {
-        size_t temp = index - logmsg.length() - 1;
+
+        //Writing from behind since we need to ensure the latest message is prioritized
+        int temp = index - logmsg.length() - 1; //leave space for null erminating char
         if (temp >= 0) {
             index -= logmsg.length();
-            memcpy(&buf[index], logmsg.c_str(), logmsg.length());
+            memcpy(&terminalbuffer[index], logmsg.c_str(), logmsg.length());
         }
         else {
             break;
@@ -721,7 +727,7 @@ void Application::LogTerminal(std::string log) {
     }
 
     currFirstCharOffset = index;
-    buf[terminalSizeLimit - 1] = '\0';
+    terminalbuffer[terminalSizeLimit - 1] = '\0'; //Ensures last char is null
 
     return;
 }
@@ -994,8 +1000,6 @@ void Application::BENCHMARKRUN(const char* infiles)
     }
 
     for (auto image : Manager) {
-        std::cout << image->GetFileName() << "\n";
-        std::cout << filterParameters;
         DWTDenoise(image);
     }
 
@@ -1014,7 +1018,7 @@ void Application::ImportImages(std::span<std::string> paths) {
 
 void Application::SmoothFilter(std::shared_ptr<ImageEntry> image)
 {
-    auto param = filterParameters->SFParameter;
+    auto param = filterParameters.SFParameter;
     bool isDecompressed = image->IsDecompressed();
 
     if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
@@ -1056,7 +1060,7 @@ void Application::SmoothFilter(std::shared_ptr<ImageEntry> image)
 }
 
 void Application::BilateralFilter(std::shared_ptr<ImageEntry> image) {
-    auto param = filterParameters->BFParameter;
+    auto param = filterParameters.BFParameter;
     bool isDecompressed = image->IsDecompressed();
 
     if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
@@ -1097,7 +1101,7 @@ void Application::BilateralFilter(std::shared_ptr<ImageEntry> image) {
 
 void Application::DWTDenoise(std::shared_ptr<ImageEntry> image)
 {
-    auto param = filterParameters->DWTParameter;
+    auto param = filterParameters.DWTParameter;
     bool isDecompressed = image->IsDecompressed();
 
     if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
@@ -1127,7 +1131,7 @@ void Application::DWTDenoise(std::shared_ptr<ImageEntry> image)
             if (!isDecompressed) image->CompressImageData();
 
 
-            }).join();
+            }).detach();
     }
     else {
         std::print("Image Loading Fail");

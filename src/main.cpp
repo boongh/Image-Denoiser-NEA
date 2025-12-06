@@ -18,7 +18,7 @@ int main() {
 
 #endif // BENCHMARK
 
-	app1.DEBUGRUN(TESTDATAFULL);
+	//app1.DEBUGRUN(TESTDATAFULL);
 
 #endif // DEBUG
 
