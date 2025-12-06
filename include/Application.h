@@ -125,10 +125,11 @@ public:
 
     struct FilterParameters {
         struct BilateralFilterParameters {
-            float sigmaSpatial = 0.2f;
-            float sigmaColor = 0.2f;
-            int kernelWidth = 5;
-            int kernelHeight = 5;
+            float sigmaSpatial;
+            float sigmaColor;
+            int kernelWidth;
+            int kernelHeight;
+            BilateralFilterParameters() { Reset(); }
             void Reset() {
                 sigmaSpatial = 1.0f;
                 sigmaColor = 0.1f;
@@ -138,24 +139,26 @@ public:
         };
 
         struct SmoothFilterParameters {
-            float strength = 1.0f;
-            int kernelWidth = 5;
-            int kernelHeight = 5;
+            float strength;
+            int kernelWidth;
+            int kernelHeight;
+            SmoothFilterParameters() { Reset(); }
             void Reset() {
                 strength = 1.0f;
                 kernelWidth = 5;
                 kernelHeight = 5;
-			}
+            }
         };
 
         struct DWTParameters {
-            int decimationLevel = 1;
+            int decimationLevel;
+            DWTParameters() { Reset(); }
             void Reset() {
                 decimationLevel = 1;
             }
         };
 
-		BilateralFilterParameters BFParameter;
+        BilateralFilterParameters BFParameter;
 		SmoothFilterParameters SFParameter;
 		DWTParameters DWTParameter;
     };
@@ -223,7 +226,8 @@ private:
     ImGuiID g_ImagePreview;
 
     bool g_firstframe = true;
-    bool g_useCompress = false;
+    bool g_useCompress = true;
+    bool g_useDebug = true;
 
     ImageManager Manager;
 

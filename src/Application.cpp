@@ -219,56 +219,104 @@ void Application::DisplayMenu() {
 
 void Application::DisplayDenoiseParamMenu() {
 
-#pragma region SF
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
-    if (ImGui::Button("Smooth LF All", ImVec2(0, 0)) && currselection != nullptr) {
-        BatchSmoothFilter();
-	    refresh = true;
-    }
+    enum DenoiseAlgorithm {
+        Auto,
+        SmoothLin,
+        Bilateral,
+        DWT
+    };
 
-    ImGui::InputFloat("Strength##SF", &filterParameters.SFParameter.strength, 0.02f, 0.2f);
-    ImGui::PopItemWidth();
+    const char* const denoiseralgo[] = {
+        "Auto",
+        "Smooth Linear Filter",
+        "Bilateral filter",
+        "Discrete Wavelet Filter"
+    };
 
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+    static int currentAlgo = Auto;
 
-    ImGui::InputInt("HalfWidth##SF", &filterParameters.SFParameter.kernelWidth, 1, 5);
-    ImGui::InputInt("HalfHeight##SF", &filterParameters.SFParameter.kernelHeight, 1, 5);
+    ImGui::Combo("Denoise Algorithm", &currentAlgo, denoiseralgo, 4);
 
-    ImGui::PopItemWidth();
+    ImGui::Separator();
 
+    switch (currentAlgo) {
+    default:
+
+        ImGui::Text("Invalid Algorithm Parameter");
+
+        break;
+    case Auto:
+
+#pragma region DWT
+        if (ImGui::Button("Start##DWT", ImVec2(0, 0)) && currselection != nullptr) {
+            filterParameters.DWTParameter.Reset();
+            BatchDWTDenoise();
+            refresh = true;
+        }
 #pragma endregion
+
+        break;
+    case SmoothLin:
+
+#pragma region SF
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
+
+        ImGui::InputFloat("Strength##SF", &filterParameters.SFParameter.strength, 0.02f, 0.2f);
+        ImGui::PopItemWidth();
+
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+
+        ImGui::InputInt("HalfWidth##SF", &filterParameters.SFParameter.kernelWidth, 1, 5);
+        ImGui::InputInt("HalfHeight##SF", &filterParameters.SFParameter.kernelHeight, 1, 5);
+
+        ImGui::PopItemWidth();
+
+        if (ImGui::Button("Start", ImVec2(0, 0)) && currselection != nullptr) {
+            BatchSmoothFilter();
+            refresh = true;
+        }
+#pragma endregion
+
+
+        break;
+    case Bilateral:
 
 #pragma region BF
 
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
-    if (ImGui::Button("Bilateral Filter", ImVec2(0, 0)) && currselection != nullptr) {
-        BilateralFilter(currselection);
-        refresh = true;
-    }
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
 
-    ImGui::InputFloat("Strength Spatial##BF", &filterParameters.BFParameter.sigmaSpatial, 1, 5);
-    ImGui::InputFloat("Strength Intensity##BF", &filterParameters.BFParameter.sigmaColor, 1, 5);
-    ImGui::PopItemWidth();
+        ImGui::InputFloat("Strength Spatial##BF", &filterParameters.BFParameter.sigmaSpatial, 1, 5);
+        ImGui::InputFloat("Strength Intensity##BF", &filterParameters.BFParameter.sigmaColor, 1, 5);
+        ImGui::PopItemWidth();
 
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
-    ImGui::InputInt("Half Width##BF", &filterParameters.BFParameter.kernelWidth, 1, 5);
-    ImGui::SameLine();
-    ImGui::InputInt("Half Height##BF", &filterParameters.BFParameter.kernelHeight, 1, 5);
-    ImGui::PopItemWidth();
-    
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+        ImGui::InputInt("Half Width##BF", &filterParameters.BFParameter.kernelWidth, 1, 5);
+        ImGui::SameLine();
+        ImGui::InputInt("Half Height##BF", &filterParameters.BFParameter.kernelHeight, 1, 5);
+        ImGui::PopItemWidth();
+
+        if (ImGui::Button("Start", ImVec2(0, 0)) && currselection != nullptr) {
+            BilateralFilter(currselection);
+            refresh = true;
+        }
+
 #pragma endregion
+
+        break;
+    case DWT:
 
 #pragma region DWT
-    ImGui::Separator();
-    ImGui::Text("DWT Denoising");
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
-    ImGui::InputInt("Decomposition Level##DWT", &filterParameters.DWTParameter.decimationLevel, 1, 2);
-    ImGui::PopItemWidth();
-    if (ImGui::Button("DWT Denoise##DWT", ImVec2(0, 0)) && currselection != nullptr) {
-        BatchDWTDenoise();
-        refresh = true;
-	}
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+        ImGui::InputInt("Decomposition Level##DWT", &filterParameters.DWTParameter.decimationLevel, 1, 2);
+        ImGui::PopItemWidth();
+        if (ImGui::Button("Start##DWT", ImVec2(0, 0)) && currselection != nullptr) {
+            BatchDWTDenoise();
+            refresh = true;
+        }
 #pragma endregion
+
+        break;
+    }
 }
 
 void Application::ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func) {  
@@ -383,8 +431,19 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
                 // of the selection scope doesn't erroneously alter our selection.
                 if (show_color_button)
                 {
-                    ImU32 dummy_col = (ImU32)((unsigned int)n * 0xC250B74B) | IM_COL32_A_MASK;
-                    ImGui::ColorButton("##", ImColor(dummy_col), ImGuiColorEditFlags_NoTooltip, color_button_sz);
+                    ImColor color;
+
+                    if (Manager.GetImage(n)->IsDecompressed()) {
+                        color = { 0, 255, 0 };
+                    }
+                    else if (Manager.GetImage(n)->IsLoaded()) {
+                        color = { 128, 128, 128 };
+                    }
+                    else {
+                        color = { 255, 0, 0 };
+                    }
+                    
+                    ImGui::ColorButton("##", color, ImGuiColorEditFlags_NoTooltip, color_button_sz);
                     ImGui::SameLine();
                 }
 
@@ -508,7 +567,7 @@ void Application::DisplayImageSaveMenu()
     ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 400.0f));
 
     //preliminary path clean-up
-    if (ImGui::InputText("string", buf, IM_ARRAYSIZE(buf))) {
+    if (ImGui::InputText("Save folder", buf, IM_ARRAYSIZE(buf))) {
         //Remove space before and after slashes (Invalid spaces)
         strcpy_s(buf, PathCleanup(buf).string().c_str());
     }
@@ -590,6 +649,43 @@ void Application::DisplayImageSaveMenu()
 void Application::DisplayDebugMenu()
 {
     ImGui::Checkbox("Use Memory Compression", &g_useCompress);
+
+    if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
+        
+        if (ImGui::Button("Load all image")) {
+            for (auto image : Manager) {
+                image->LoadImage();
+            }
+        }
+        if (ImGui::Button("Decompress all image")) {
+            for (auto image : Manager) {
+                image->TryDecompressImageData();
+            }
+        }
+        if (ImGui::Button("Compress all image")) {
+            for (auto image : Manager) {
+                image->TryCompressImageData();
+            }
+        }
+    }
+    else {
+        if (ImGui::Button("Load selected image")) {
+            ForAllSelectedImage([this](std::shared_ptr<ImageEntry> image) {
+                image->LoadImage();
+                });
+        }
+        if (ImGui::Button("Decompress selected image")) {
+            ForAllSelectedImage([this](std::shared_ptr<ImageEntry> image) {
+                image->TryDecompressImageData();
+                });
+        }
+        if (ImGui::Button("Compress selected image")) {
+            ForAllSelectedImage([this](std::shared_ptr<ImageEntry> image) {
+                image->TryCompressImageData();
+                });
+        }
+
+    }
 }
 
 void Application::DisplayTerminal()
@@ -738,12 +834,14 @@ int Application::Run() {
 
         ImGui::End();
 
-        ImGui::Begin("Debug", nullptr);
-        {
-            DisplayDebugMenu();
+        if (g_useDebug) {
+            ImGui::Begin("Advanced", nullptr);
+            {
+                DisplayDebugMenu();
+            }
+            ImGui::End();
         }
 
-        ImGui::End();
 
         ImGui::Begin("Terminal", nullptr);
         {
@@ -793,10 +891,10 @@ int Application::Run() {
                 if (currselection != nullptr) {
                     int load = currselection->LoadImage();
                     if (load != 0) {
-                        Manager.CreateErrorRenderer(currselection)->LoadGPU();
+                        Manager.CreateErrorRenderer(currselection, "fail to load image");
                     }
-                    else if (load == 0 && currselection->DecompressImageData() == 0) 
-                        Manager.CreateRenderer(currselection)->LoadGPU();
+                    else if (load == 0 && currselection->DecompressImageData() == 0)
+                        Manager.CreateImageRenderer(currselection)->LoadGPU();
                     else {
                         LogTerminal("Fail to load image file");
                     }
