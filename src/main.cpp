@@ -14,11 +14,11 @@ int main() {
 
 #ifdef DEBUG
 #ifdef BENCHMARK
-	app1.BENCHMARKRUN("E:/Programming/Projects/Image Denoising NEA/Image Denoising NEA/testdata/cbsd68/CBSD68/noisy10/0000.png");
+	app1.BENCHMARKRUN(TESTDATA);
 
 #endif // BENCHMARK
 
-	//app1.DEBUGRUN(TESTDATAFULL);
+	app1.DEBUGRUN(TESTDATA2);
 
 #endif // DEBUG
 

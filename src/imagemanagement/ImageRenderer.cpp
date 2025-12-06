@@ -100,16 +100,6 @@ int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
 	float deltaScale = targetScale - scale;
 	scale += io.DeltaTime * deltaScale * 10;
 
-	if (deltaScale != 0) {
-		std::cout << "targetScale: " << targetScale << "\n";
-		std::cout << "deltaTargetScale: " << std::copysign(1.0, io.MouseWheel) * (io.MouseWheel != 0) * targetScale << "\n";
-		std::cout << "scale: " << scale << "\n";
-		std::cout << "deltaScale: " << deltaScale << "\n";
-		std::cout << "deltaScalePost: " << io.DeltaTime * deltaScale / 10 << "\n";
-
-	}
-
-
 	ImGui::ImageWithBg(textureID, displayImageDimension, uv_min, uv_max, bgColor);
 
 	if (ImGui::BeginItemTooltip())

@@ -95,6 +95,7 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 {
 	const int filterLength = 4;
+	int offset = filterLength - 1;
 	int direction = low->layer % 2;
 
 	if (direction != 0 && direction != 1) {
@@ -109,20 +110,30 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	unsigned int convolvedWidth;
 	unsigned int convolvedHeight;
 
-	unsigned upSampledWidth;
-	unsigned upSampledHeight;
+	unsigned int upSampledWidth;
+	unsigned int upSampledHeight;
 
+	unsigned int rowBound;
+	unsigned int columnBound;
 #if doDivide
 
 	if (direction == 0) {
 		upSampledHeight = low->height;
 		upSampledWidth = low->width * 2;
+
+		columnBound = height;
+		rowBound = width + offset;
+
 		convolvedWidth = upSampledWidth + filterLength - 1;
 		convolvedHeight = upSampledHeight;
 	}
 	else {
 		upSampledHeight = low->height * 2;
 		upSampledWidth = low->width;
+
+		columnBound = height + offset;
+		rowBound = width;
+
 		convolvedHeight = upSampledHeight + filterLength - 1;
 		convolvedWidth = upSampledWidth;
 	}
@@ -191,7 +202,7 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 #endif
 
-	std::vector<float> intermediate = std::vector<float>(convolvedHeight * convolvedWidth, 0.0);
+	std::vector<float> intermediate = std::vector<float>(width * height, 0.0);
 
 	//Low pass first, high pass second
 	int first = 0, stop = 1;
@@ -205,8 +216,8 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	for (int pass = first; pass <= stop; pass++) {
 		const std::array<const double, 4> coefficients = (pass == 0) ? sym2.rec_lo  : sym2.rec_hi;
 		std::vector<float> src = pass == 0 ? low->brightnessData : high->brightnessData;
-		for (int y = 0; y < convolvedHeight; y++) {
-			for (int x = 0; x < convolvedWidth; x++) {
+		for (int y = (direction == 1) ? offset : 0; y < columnBound; y++) {
+			for (int x = (direction == 0) ? offset : 0; x < rowBound; x++) {
 				double sum = 0;
 				for (int w = 0; w < filterLength; ++w) {
 
@@ -225,14 +236,16 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 					int position = PosCompose(xPos, yPos, upSampledWidth);
 
 					if (position < 0 || position >= src.size()) {
-						std::cout << "Error: position out of bounds in DWT recomposition.\n";
+						std::cout << "Error: position out of bounds in DWT recomposition inner.\n";
 						return 1;
 					}
 
 					sum += coefficients[w] * src[position];
 				}
+				int dstX = x - offset * (direction == 0);
+				int dstY = y - offset * (direction == 1);
 
-				int dstPos = PosCompose(x, y, convolvedWidth);
+				int dstPos = PosCompose(dstX, dstY, width);
 
 #ifdef DEBUG
 				if (dstPos < 0 || dstPos >= intermediate.size()) {
@@ -250,30 +263,29 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	low = nullptr;
 	high = nullptr;
 
-	brightnessData = std::vector<float>(width * height);
+	brightnessData = intermediate;
 
+	////horizontal crop
+	////skips the first and the last L - 1 pixels each row
+	////RowLength = length - (L - 1) * 2
+	//if (direction == 0) {
+	//	for (int y = 0; y < height; ++y) {
+	//		int srcPos = PosCompose(offset, y, convolvedWidth);
+	//		int dstPos = PosCompose(0, y, width);
+	//		/*for (int x = 0; x < width; ++x) {
+	//			brightnessData[dstPos] = intermediate[srcPos];
+	//		}*/
+	//		memcpy(&(brightnessData[dstPos]), &(intermediate[srcPos]), width * sizeof(float));
+	//	}
 
-	int offset = filterLength - 1;
-	//horizontal crop
-	//skips the first and the last L - 1 pixels each row
-	//RowLength = length - (L - 1) * 2
-	if (direction == 0) {
-		for (int y = 0; y < height; ++y) {
-			for (int x = 0; x < width; ++x) {
-				int srcPos = PosCompose(x + offset, y, convolvedWidth);
-				int dstPos = PosCompose(x, y, width);
-				brightnessData[dstPos] = intermediate[srcPos];
-			}
-		}
-
-	}
-	//Vertical crop
-	//Skips the first and the last L-1 pixels of each column
-	//ColLength = length - (L - 1) * 2
-	else if (direction == 1) {
-		int srcPos = PosCompose(0, offset, convolvedWidth);
-		memmove(&(brightnessData[0]), &(intermediate[srcPos]), width * height * sizeof(float));
-	}
+	//}
+	////Vertical crop
+	////Skips the first and the last L-1 pixels of each column
+	////ColLength = length - (L - 1) * 2
+	//else if (direction == 1) {
+	//	int srcPos = PosCompose(0, offset, convolvedWidth);
+	//	memmove(&(brightnessData[0]), &(intermediate[srcPos]), width * height * sizeof(float));
+	//}
 
 	return 0;
 }

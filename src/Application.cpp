@@ -977,7 +977,11 @@ void Application::DEBUGRUN(const char* infiles) {
     SplitPaths(infiles, paths);
 
     //SplitPaths(infiles, paths);
-    ImportImages(paths);
+    for (int i = 0; i < 3; i++) {
+        ImportImages(paths);
+        /*filterParameters.DWTParameter.decimationLevel = 1 + 2 * i;
+        DWTDenoise(Manager.GetImage(i));*/
+    }
 
 #endif // DEBUG
 
