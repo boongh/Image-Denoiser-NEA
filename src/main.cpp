@@ -10,7 +10,11 @@
 
 int main() {
 	Application app1;
-	app1.DEBUGRUN(TESTDATAFULL);
+	app1.BENCHMARKRUN(TESTDATAFULL);
+#ifndef BENCHMARK
 	app1.Run();
+
+#endif // !BENCHMARK
+
 	return 0;
 }	

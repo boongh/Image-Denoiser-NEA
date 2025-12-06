@@ -180,86 +180,94 @@ std::string RegexReplacement(
 	return result;
 }
 
-
-int SaveImages(std::vector<std::tuple<fs::path, const RGBAImageI>> list, ImageFormat format)
-{
+int SaveSingleImageHelper(fs::path path, const RGBAImageI image, ImageFormat format) {
 	try {
 		switch (format)
 		{
 		case FORMAT_JPEG:
-			for (auto& [path, image] : list) {
-				if (path.empty()) continue;
+			if (path.empty()) break;
 
-				path.replace_extension(".jpg");
+			path.replace_extension(".jpg");
 
-				PrepFilePath(path);
+			PrepFilePath(path);
 
-				FileWriter::WriteJPEG(
-					path.string(),
-					image,
-					90); //Quality fixed at 90 for now
-				LogtoAppTerminal("Saved " + path.string() + "\n");
-			}
+			FileWriter::WriteJPEG(
+				path.string(),
+				image,
+				90); //Quality fixed at 90 for now
+			LogtoAppTerminal("Saved " + path.string() + "\n");
 			break;
 		case FORMAT_PNG:
-			for (auto& [path, image] : list) {
-				if (path.empty()) continue;
+			if (path.empty()) break;
 
-				path.replace_extension(".png");
+			path.replace_extension(".png");
 
-				PrepFilePath(path);
+			PrepFilePath(path);
 
-				FileWriter::WritePNG(
-					path.string(),
-					image);
-				LogtoAppTerminal("Saved " + path.string() + "\n");
-			}
+			FileWriter::WritePNG(
+				path.string(),
+				image);
+			LogtoAppTerminal("Saved " + path.string() + "\n");
 			break;
 		case FORMAT_BMP:
-			for (auto& [path, image] : list) {
-				if (path.empty()) continue;
+			if (path.empty()) break;
 
-				path.replace_extension(".bmp");
+			path.replace_extension(".bmp");
 
-				PrepFilePath(path);
+			PrepFilePath(path);
 
-				FileWriter::WriteBMP(
-					path.string(),
-					image);
-				LogtoAppTerminal("Saved " + path.string() + "\n");
-			}
+			FileWriter::WriteBMP(
+				path.string(),
+				image);
+			LogtoAppTerminal("Saved " + path.string() + "\n");
+			
 			break;
 
 		case FORMAT_TGA:
-			for (auto& [path, image] : list) {
-				if (path.empty()) continue;
 
-				path.replace_extension(".tga");
+			if (path.empty()) break;
 
-				PrepFilePath(path);
+			path.replace_extension(".tga");
 
-				FileWriter::WriteTGA(
-					path.string(),
-					image);
-				LogtoAppTerminal("Saved " + path.string() + "\n");
-			}
+			PrepFilePath(path);
+
+			FileWriter::WriteTGA(
+				path.string(),
+				image);
+			LogtoAppTerminal("Saved " + path.string() + "\n");
+
 			break;
 		case FORMAT_QOI:
-			for (auto& [path, image] : list) {
-				if (path.empty()) continue;
+			if (path.empty()) break;
 
-				path.replace_extension(".qoi");
+			path.replace_extension(".qoi");
 
-				PrepFilePath(path);
+			PrepFilePath(path);
 
-				FileWriter::WriteQOI(
-					path.string(),
-					image);
-				LogtoAppTerminal("Saved " + path.string() + "\n");
-			}
+			FileWriter::WriteQOI(
+				path.string(),
+				image);
+			LogtoAppTerminal("Saved " + path.string() + "\n");
+
 			break;
 		default:
 			break;
+		}
+		return 0;
+	}
+	catch (int err) {
+		return err;
+	}
+}
+
+int SaveImages(std::vector<std::tuple<fs::path, const RGBAImageI>> list, ImageFormat format)
+{
+	try {
+		for (auto& [path, image] : list) {
+			std::thread thread([path, image, format]() {
+				SaveSingleImageHelper(path, image, format);
+				});
+			thread.detach();
 		}
 		return 0;
 	}

@@ -38,9 +38,23 @@ std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>> ImageEntry
 
 std::tuple<std::shared_lock<std::shared_mutex>, std::shared_ptr<const RGBAImageI>> ImageEntry::RGBAIRead()
 {
+	//Returns null ptr if an unexpected exception happen
+	//Should never return, but can, so check.
+	std::shared_ptr<const RGBAImageI> ptr = nullptr;
+
+	if(status != CompressionStatus::DECOMPRESSED) {
+		std::unique_lock lock(lockstate);
+		if ((LoadImage() | DecompressImageData()) == 0) {
+			ptr = std::make_shared<const RGBAImageI>(imageData);
+		}
+		lock.release();
+	}
+	else if (status == CompressionStatus::DECOMPRESSED) {
+		ptr = std::make_shared<const RGBAImageI>(imageData);
+	}
 	return std::tuple<std::shared_lock<std::shared_mutex>, std::shared_ptr<const RGBAImageI>>{
 		std::shared_lock<std::shared_mutex>(lockstate),
-			std::make_shared<const RGBAImageI>(imageData)
+		ptr	
 	};
 }
 
@@ -161,10 +175,12 @@ int ImageEntry::UnloadImage() {
 	status = CompressionStatus::NOT_LOADED;
 
 	imageData.Clear();
-	std::vector<PixelRGBA>().swap(imageData.data);
+	imageData.data.resize(0);
+	imageData.data.shrink_to_fit();
 
 	imageDataCompressed.clear();
-	std::vector<uint8_t>().swap(imageDataCompressed);
+	imageDataCompressed.resize(0);
+	imageDataCompressed.shrink_to_fit();
 
 	width = 0;
 	height = 0;
@@ -189,8 +205,8 @@ int ImageEntry::CompressImageData() {
 	if (QOICompress(std::span<uint8_t>(reinterpret_cast<uint8_t*>(imageData.data.data()), width * height * sizeof(PixelRGBA)), imageDataCompressed, width, height, channels) == -1) return -1;
 
 	status = CompressionStatus::COMPRESSED;
-	std::vector<PixelRGBA> newvec = std::vector<PixelRGBA>(0);
-	imageData.data = newvec;
+	imageData.data.resize(0);
+	imageData.data.shrink_to_fit();
 
 	return 0;
 }
@@ -204,18 +220,76 @@ int ImageEntry::DecompressImageData() {
 	//Image not even loaded in
 	if (status != CompressionStatus::COMPRESSED) return -2;
 
-	QOIDecompress(std::span<uint8_t>(imageDataCompressed.data(), imageDataCompressed.size()), imageData.data, width, height);
+	if (status == CompressionStatus::COMPRESSED) {
+		QOIDecompress(std::span<uint8_t>(imageDataCompressed.data(), imageDataCompressed.size()), imageData.data, width, height);
 
-	status = CompressionStatus::DECOMPRESSED;
-	imageDataCompressed.clear();
+		status = CompressionStatus::DECOMPRESSED;
+		imageDataCompressed.clear();
 
-	imageData.width = width;
-	imageData.height = height;
-	imageData.channels = channels;
+		imageData.width = width;
+		imageData.height = height;
+		imageData.channels = channels;
 
-	std::vector<uint8_t> newvec = std::vector<uint8_t>(0);
-	imageDataCompressed = newvec;
+		imageDataCompressed.resize(0);
+		imageDataCompressed.shrink_to_fit();
 	
+	}
+	return 0;
+}
+
+int ImageEntry::TryCompressImageData() {
+	std::unique_lock lock(lockstate, std::defer_lock);
+
+	if (!lock.try_lock())
+		return 1;
+
+
+	//Already compressed
+	if (status == CompressionStatus::COMPRESSED) return 0;
+
+	//Not even loaded in
+	if (status != CompressionStatus::DECOMPRESSED) return -2;
+
+	//Someone else still hold the image, cannot do destructive operations
+	if (IsFree() != 0) return -3;
+
+	if (QOICompress(std::span<uint8_t>(reinterpret_cast<uint8_t*>(imageData.data.data()), width * height * sizeof(PixelRGBA)), imageDataCompressed, width, height, channels) == -1) return -1;
+
+	status = CompressionStatus::COMPRESSED;
+	imageData.data.resize(0);
+	imageData.data.shrink_to_fit();
+
+	return 0;
+
+}
+
+int ImageEntry::TryDecompressImageData()
+{
+	std::unique_lock lock(lockstate, std::defer_lock);
+
+	if (!lock.try_lock())
+		return 1;
+
+	//Image already decompressed
+	if (status == CompressionStatus::DECOMPRESSED) return 0;
+
+	//Image not even loaded in
+	if (status != CompressionStatus::COMPRESSED) return -2;
+
+	if (status == CompressionStatus::COMPRESSED) {
+		QOIDecompress(std::span<uint8_t>(imageDataCompressed.data(), imageDataCompressed.size()), imageData.data, width, height);
+
+		status = CompressionStatus::DECOMPRESSED;
+		imageDataCompressed.clear();
+
+		imageData.width = width;
+		imageData.height = height;
+		imageData.channels = channels;
+
+		imageDataCompressed.resize(0);
+		imageDataCompressed.shrink_to_fit();
+
+	}
 
 	return 0;
 }

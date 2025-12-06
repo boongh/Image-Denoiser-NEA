@@ -85,7 +85,6 @@ RGBAImageI Denoiser::DWT::DecTree::GetImageRGB(float Y, float Cb, float Cr, floa
 	RGBAImageI dst(rootNode->width, rootNode->height, 4);
 	for (int i = 0; i < dst.data.size(); ++i) {
 		std::array<float, 3> currPix = YCbCrtoLRGB(rootNode->brightnessData[i] * Y, rootImage[i][1] * Cb, rootImage[i][2] * Cr);
-
 		dst.data[i] = PixelRGBA(currPix[0] * 255.0f * r, currPix[1] * 255.0f * g, currPix[2] * 255.0f * b, rootAlpha[i]);
 	}
 	return dst;

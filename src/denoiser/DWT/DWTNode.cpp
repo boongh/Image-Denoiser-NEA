@@ -1,5 +1,6 @@
 #include "denoiser.h"
 #include <iostream>
+#include <immintrin.h>
 
 
 #define doBackward 1
@@ -63,9 +64,10 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 
 	//Low pass first, high pass second
 	for (int pass = 0; pass <= 1; pass++) {
-		std::span<const double, 4> coefficients = std::span<const double, 4>(pass == 0 ? sym2.dec_lo.data() : sym2.dec_hi.data(), 4);
+		const std::array<const double, 4> coefficients = (pass == 0) ? sym2.dec_lo : sym2.dec_hi;
 		std::shared_ptr<DecNode> dst = ((pass == 0) ? low : high);
 		for (int y = 0; y < convolvedHeight; y++) {
+
 			for (int x = 0; x < convolvedWidth; x++) {
 				double sum = 0;
 
@@ -74,10 +76,12 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 					int xPos = direction == 0 ? horStride * x - w : x;
 					int yPos = direction == 1 ? vertStride * y - w : y;
 
+
 					xPos = (xPos < 0) ? -xPos - 1 : (xPos >= width ? 2 * width - xPos - 1 : xPos);
 					yPos = (yPos < 0) ? -yPos - 1 : (yPos >= height ? 2 * height - yPos - 1 : yPos);
 
 					int position = PosCompose(xPos, yPos, width);
+
 					sum += coefficients[w] * brightnessData[position];
 				}
 
@@ -95,7 +99,9 @@ int Denoiser::DWT::DecNode::DecomposeNode(int wavelet)
 int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 {
 	const int filterLength = 4;
+	int edgeOffset = filterLength - 1;
 	int direction = low->layer % 2;
+
 
 	if (direction != 0 && direction != 1) {
 		return 1;
@@ -145,12 +151,13 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 			high->brightnessData[2 * i + 1] = 0.0f;*/
 		}
 	}
+
 	else if (direction == 1) {
 		for (int index = PosCompose(0, low->height - 1, upSampledWidth);
 			index >= 0;
 			index -= static_cast<int>(upSampledWidth)) {
-			std::memmove(&(low->brightnessData)[index * 2], &(low->brightnessData)[index], width * sizeof(float));
-			std::memmove(&(high->brightnessData)[index * 2], &(high->brightnessData)[index], width * sizeof(float));
+			std::memcpy(&(low->brightnessData)[index * 2], &(low->brightnessData)[index], width * sizeof(float));
+			std::memcpy(&(high->brightnessData)[index * 2], &(high->brightnessData)[index], width * sizeof(float));
 			std::memset(&(high->brightnessData)[index], 0, width * sizeof(float));
 			std::memset(&(low->brightnessData)[index], 0, width * sizeof(float));
 		}
@@ -202,21 +209,8 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 		first = 1;
 	}
 
-	const int delay = 0; //sym2 delay
-	int delayx, delayy;
-
-	if (direction == 0) {
-		delayx = delay;
-		delayy = 0;
-	}
-	else {
-		delayx = 0;
-		delayy = delay;
-	}
-
-
 	for (int pass = first; pass <= stop; pass++) {
-		std::span<const double, 4> coefficients = std::span<const double, 4>(pass == 0 ? sym2.rec_lo.data() : sym2.rec_hi.data(), 4);
+		const std::array<const double, 4> coefficients = pass == 0 ? sym2.rec_lo : sym2.rec_hi;
 		std::vector<float> src = pass == 0 ? low->brightnessData : high->brightnessData;
 		for (int y = 0; y < convolvedHeight; y++) {
 			for (int x = 0; x < convolvedWidth; x++) {
@@ -224,16 +218,14 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 				for (int w = 0; w < filterLength; ++w) {
 
 #if doBackward
-					int xPos = direction == 0 ? x - w + delayx : x;
-					int yPos = direction == 1 ? y - w + delayy : y;
+					int xPos = x - w * (direction == 0);
+					int yPos = y - w * (direction == 1);
 
 #else// 1
 					int xPos = direction == 0 ? read_x + w : read_x;
 					int yPos = direction == 1 ? read_y + w : read_y;
 #endif
 
-					int bufferX = xPos;
-					int bufferY = yPos;
 					xPos = (xPos < 0) ? -xPos - 1 : (xPos >= upSampledWidth ? 2 * upSampledWidth - xPos - 1 : xPos);
 					yPos = (yPos < 0) ? -yPos - 1 : (yPos >= upSampledHeight ? 2 * upSampledHeight - yPos - 1 : yPos);
 
@@ -268,25 +260,23 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 	brightnessData = std::vector<float>(width * height);
 
 
-	int offset = filterLength - 1;
 	//horizontal crop
 	//skips the first and the last L - 1 pixels each row
 	//RowLength = length - (L - 1) * 2
 	if (direction == 0) {
 		for (int y = 0; y < height; ++y) {
-			for (int x = 0; x < width; ++x) {
-				int srcPos = PosCompose(x + offset, y, convolvedWidth);
-				int dstPos = PosCompose(x, y, width);
-				brightnessData[dstPos] = intermediate[srcPos];
-			}
-		}
+			int srcPos = PosCompose(edgeOffset, y, convolvedWidth);
+			int dstPos = PosCompose(0, y, width);
 
+			memmove(&(brightnessData[dstPos]), &(intermediate[srcPos]), width * sizeof(float));
+		}
 	}
-	//Vertical crop
+	//vertical crop
 	//Skips the first and the last L-1 pixels of each column
 	//ColLength = length - (L - 1) * 2
+
 	else if (direction == 1) {
-		int srcPos = PosCompose(0, offset, convolvedWidth);
+		int srcPos = PosCompose(0, edgeOffset, convolvedWidth);
 		memmove(&(brightnessData[0]), &(intermediate[srcPos]), width * height * sizeof(float));
 	}
 

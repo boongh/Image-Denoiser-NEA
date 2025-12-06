@@ -125,22 +125,30 @@ public:
 
     struct FilterParameters {
         struct BilateralFilterParameters {
-            float sigmaSpatial = 0.2f;
-            float sigmaColor = 0.2f;
-            int kernelWidth = 5;
-            int kernelHeight = 5;
+            float sigmaSpatial;
+            float sigmaColor;
+            int kernelWidth;
+            int kernelHeight;
+
+            BilateralFilterParameters() {
+                Reset();
+            }
             void Reset() {
-                sigmaSpatial = 1.0f;
-                sigmaColor = 0.1f;
+                sigmaSpatial = 0.2f;
+                sigmaColor = 0.2f;
                 kernelWidth = 5;
                 kernelHeight = 5;
             }
         };
 
         struct SmoothFilterParameters {
-            float strength = 1.0f;
-            int kernelWidth = 5;
-            int kernelHeight = 5;
+            float strength;
+            int kernelWidth;
+            int kernelHeight;
+
+            SmoothFilterParameters() {
+                Reset();
+            }
             void Reset() {
                 strength = 1.0f;
                 kernelWidth = 5;
@@ -149,7 +157,11 @@ public:
         };
 
         struct DWTParameters {
-            int decimationLevel = 1;
+            int decimationLevel;
+
+            DWTParameters() {
+                Reset();
+            }
             void Reset() {
                 decimationLevel = 1;
             }
@@ -167,6 +179,10 @@ public:
     int Run();
 
     void DEBUGRUN(const char* infiles);
+
+    void BENCHMARKRUN(const char* infiles);
+
+
 
     void ImportImages(std::span<std::string> paths);
     void LogTerminal(std::string log);
@@ -223,7 +239,14 @@ private:
     ImGuiID g_ImagePreview;
 
     bool g_firstframe = true;
-    bool g_useCompress = false;
+    bool g_useCompress = true;
+
+#ifdef DEBUG
+    bool g_useAdvanced = true;
+#else
+    bool g_useAdvanced = false;
+#endif // DEBUG
+
 
     ImageManager Manager;
 
@@ -232,5 +255,8 @@ private:
     
     //Menu functions for access outside of menu
     void LoadAllImages();
+    void UnloadAllImages();
 	void OpenImageFile();
+    void LoadImGuiSettings();
+    void SaveImGuiSettings();
 };

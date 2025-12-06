@@ -82,6 +82,7 @@ public:
 
 	/// <summary>
 	/// Gets read access to the entire image data
+	/// UNSAFE, DOES NOT LOCK THE IMAGE MUTEX
 	/// </summary>
 	/// <returns></returns>
 	std::span<const PixelRGBA> ReadImageData() const;
@@ -160,6 +161,8 @@ public:
 	int CompressImageData();
 	int DecompressImageData();
 
+	int TryCompressImageData();
+	int TryDecompressImageData();
 
 	//<--Thread-safety functions to manage the use count of the image entry-->
 
@@ -203,8 +206,14 @@ public:
 };
 
 class ImageRenderer {
+
 public:
-	ImageRenderer(std::shared_ptr<ImageEntry> Image, int type = 0);
+	//Factory helper function
+	static std::shared_ptr<ImageRenderer> CreateImageRenderer(std::shared_ptr<ImageEntry> Image);
+	static std::shared_ptr<ImageRenderer> CreateErrorRenderer(const char* msg = "empty");
+
+
+	ImageRenderer(std::shared_ptr<ImageEntry> Image, const char* msg = nullptr);
 	~ImageRenderer();
 
 	void LoadGPU();
@@ -212,7 +221,7 @@ public:
 
 	int DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor);
 
-	int type;
+	const char* tag;
 private:
 	
 	unsigned int width;
@@ -240,8 +249,8 @@ public:
 	int ImportFromFile(std::string path);
 	int ImportFromSpan(std::span<PixelRGBA> src, unsigned int width, unsigned int height, std::string name);
 
-	int LazyLoadImage(int index);
-	int LazyLoadImage(std::shared_ptr<ImageEntry> imageEntry);
+	int LoadImage(int index);
+	int LoadImage(std::shared_ptr<ImageEntry> imageEntry);
 
 	int UnloadImage(int index);
 	int UnloadImage(std::set<std::shared_ptr<ImageEntry>> scheduledDeletion);
@@ -251,9 +260,14 @@ public:
 	void Compress(int index);
 	void Decompress(int index);
 
-	std::shared_ptr<ImageRenderer>	CreateRenderer(int index, int errType = 0);
-	std::shared_ptr<ImageRenderer> CreateRenderer(std::shared_ptr<ImageEntry> item);
-	std::shared_ptr<ImageRenderer> CreateErrorRenderer(std::shared_ptr<ImageEntry> item);
+	void TryCompress(int index);
+	void TryDecompress(int index);
+
+	std::shared_ptr<ImageRenderer>	CreateImageRenderer(int index);
+	std::shared_ptr<ImageRenderer> CreateImageRenderer(std::shared_ptr<ImageEntry> item);
+
+	std::shared_ptr<ImageRenderer>	CreateErrorRenderer(int index, const char* errMsg);
+	std::shared_ptr<ImageRenderer> CreateErrorRenderer(std::shared_ptr<ImageEntry> item, const char* errMsg);
 
 	std::shared_ptr<ImageRenderer> GetRenderer(int index);
 	std::shared_ptr<ImageRenderer> GetRenderer(std::shared_ptr<ImageEntry> imageEntry);

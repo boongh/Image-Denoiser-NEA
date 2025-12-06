@@ -34,7 +34,7 @@ namespace MathsUtils
     };
 
     template <typename T>
-    int partition(std::span<T> arr, int l, int r) {
+    int LomutoPartition(std::span<T> arr, int l, int r) {
         int x = arr[r], i = l;
         for (int j = l; j <= r - 1; j++) {
             if (arr[j] <= x) {
@@ -56,7 +56,7 @@ namespace MathsUtils
             // Partition the array around the last 
             // element and get the position of the pivot 
             // element in the sorted array.
-            int index = MathsUtils::partition(dataSpan, left, right);
+            int index = MathsUtils::LomutoPartition(dataSpan, left, right);
 
             // If position is the same as k.
             if (index - left == k - 1)
@@ -84,16 +84,9 @@ namespace MathsUtils
     /// <param name="value"></param>
     template <typename T>
     void SoftThreshold(std::span<T>& data, T value) {
+        #pragma omp parallel for
         for (T& element : data) {
-            if (element > value) {
-                element -= value;
-            }
-            else if (element < -value) {
-                element += value;
-            }
-            else {
-                element = 0;
-			}
+            element += value * std::copysign(1.0, std::abs(element) - value);
         }
     }
 

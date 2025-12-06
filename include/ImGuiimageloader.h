@@ -12,6 +12,6 @@
 /// <param name="height"></param>
 /// <param name="channels"></param>
 /// <returns></returns>
-bool LoadImage_s(unsigned int& textureID, void* data, unsigned int width, unsigned int height, unsigned int channels);
+bool LoadImage_s(unsigned int& textureID, const void* data, unsigned int width, unsigned int height, unsigned int channels);
 
 bool UnloadImage_s(unsigned int& textureID);
