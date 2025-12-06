@@ -78,28 +78,19 @@
     <ClCompile Include="Dependencies\FileReader\src\Reader\WAVReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Dependencies\FileReader\src\Reader\ImageReader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imagemanagement\ImageManager.cpp">
+    <ClCompile Include="src\ImageManagement\ImageManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\Application.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imagemanagement\ImageEntry.cpp">
+    <ClCompile Include="src\ImageManagement\ImageEntry.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\imagemanagement\ImageRenderer.cpp">
+    <ClCompile Include="src\ImageManagement\ImageRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\denoiser\denoiser.cpp">
@@ -121,6 +112,27 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\denoiser\DWT\DWTDenoiser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\FileManagement\FileManagement.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\QOIWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\TextWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\WAVWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\JPEGWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\PNGWriter.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Dependencies\FileReader\src\Writer\stbwriterimpl.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -216,6 +228,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\utility\mathsutils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\FileManagement.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

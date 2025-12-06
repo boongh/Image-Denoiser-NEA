@@ -18,7 +18,7 @@ int Denoiser::SmoothLF(std::span<PixelRGBA> src, unsigned int width, unsigned in
 	int yPos = 0;
 
 	unsigned int postemp = 0;
-	unsigned int cum = 0;
+	unsigned int Accum = 0;
 
 	PixelRGBA pinit;
 	PixelRGBA pavg;
@@ -31,7 +31,7 @@ int Denoiser::SmoothLF(std::span<PixelRGBA> src, unsigned int width, unsigned in
 			pavg.Clear();
 			PosDecompose(pixelpos, width, height, &xPos, &yPos);
 
-			cum = 0;
+			Accum = 0;
 			sumR = sumG = sumB = 0;
 
 			
@@ -43,7 +43,7 @@ int Denoiser::SmoothLF(std::span<PixelRGBA> src, unsigned int width, unsigned in
 					sumR += srcpixel.r;
 					sumG += srcpixel.g;
 					sumB += srcpixel.b;
-					cum++;
+					Accum++;
 				}
 			}
 #else
@@ -60,21 +60,21 @@ int Denoiser::SmoothLF(std::span<PixelRGBA> src, unsigned int width, unsigned in
 					sumR += srcpixel.r;
 					sumG += srcpixel.g;
 					sumB += srcpixel.b;
-					cum++;
+					Accum++;
 				}
 			}
 #endif // 0
 
 
 #ifdef DEBUG	
-			if (cum == 0) {
-				printf("Latest pixel %d before crash (%d, %d, %d) with count %d", pixelpos, sumR, sumG, sumB, cum);
+			if (Accum == 0) {
+				printf("Latest pixel %d before crash (%d, %d, %d) with count %d", pixelpos, sumR, sumG, sumB, Accum);
 				return -1;
 			}
 #endif // DEBUG
 
 			pinit = src[pixelpos];
-			sumR /= cum; sumG /= cum;  sumB /= cum;
+			sumR /= Accum; sumG /= Accum;  sumB /= Accum;
 
 			dst[pixelpos] = PixelRGBA(
 				lerp<uint8_t>(pinit.r, sumR, strn),

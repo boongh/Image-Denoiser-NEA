@@ -2,6 +2,9 @@
 #include <denoiser.h>
 #include <filesystem>
 #include <algorithm>
+#include "FileManagement.h"
+#include <imgui.h>
+#include <tinyfiledialogs.h>
 
 #ifdef DEBUG
 
@@ -10,22 +13,23 @@
 
 #include <set>
 
-#define TheGoodBlueColor ImVec4(64, 145, 190, 0)
+namespace fs = std::filesystem;
+using slockmutex = std::shared_lock<std::shared_mutex>;
 
-const char* Application::formatfilter[] = {
-    "*.jpg",
-    "*.png",
-    "*.qoi",
-};
-
-
-Application::Application(ImVec4 backgroundColor) : g_DebugView(false), g_ImageListView(true), g_ImagePreview(true), g_docklefttemp(false), g_viewport_id(0){
+Application::Application(ImVec4 backgroundColor) : 
+    g_DebugView(false), 
+    g_ImageListView(true), 
+    g_ImagePreview(true), 
+    g_docklefttemp(false), 
+    g_viewport_id(0){
     //Default format filter
 
     clearColor = backgroundColor;
+    currentApp = this;
     return;
 }
 
+Application* Application::currentApp = nullptr;
 
 void Application::glfw_error_callback(int error, const char* description) {
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
@@ -128,6 +132,8 @@ int Application::InitWindow(GLFWwindow*& windowRet) {
     // Our state
 
     // Main loop
+
+
 #ifdef __EMSCRIPTEN__
 // For an Emscripten build we are disabling file-system access, so let's not attempt to do a fopen() of the imgui.ini file.
 // You may manually call LoadIniSettingsFromMemory() to load settings from your own storage.
@@ -137,6 +143,7 @@ int Application::InitWindow(GLFWwindow*& windowRet) {
 #endif
     return 0;
 }
+
 
 void Application::BuildDock()
 {
@@ -170,43 +177,27 @@ void Application::BuildDock()
         ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 
         DisplayMenu();
-
-        ImGui::End();
+        ImGui::End(); 
     }
-}
-
-int Application::ImageSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths) {
-    // Load image with 4 channels
-    const char* file = OpenFileDialogue("Select an Image", formatfilter, filtercount);
-
-    if (file != NULL) {
-        std::cout << normalizePath(file) << "\n";
-
-        SplitPaths(normalizePath(file), paths); // Split the file path into components if needed
-
-        for (int i = 0; i < paths.size(); i++) {
-            std::cout << paths[i] << std::endl;
-        }
-        std::cout << paths.size() << " files selected." << std::endl;
-    }
-    return 0;
 }
 
 void Application::DisplayMenu() {
 
     if (ImGui::BeginMenuBar())
     {
+        if (ImGui::BeginMenu("Debug"))
+        {
+            if (ImGui::MenuItem("Use Advance")) {
+                g_useAdvanced = !g_useAdvanced;
+            }
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("File"))
         {
             if (ImGui::MenuItem("Open file", "CTRL+O")) {
 				OpenImageFile();
             }
-
-            if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {} // Disabled item
-            ImGui::Separator();
-            if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-            if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-            if (ImGui::MenuItem("Paste", "CTRL+V")) {}
             ImGui::EndMenu();
         }
 
@@ -215,75 +206,123 @@ void Application::DisplayMenu() {
             if (ImGui::MenuItem("Load All", "CTRL+SHIFT+A")) {
 				LoadAllImages();
             }
-            if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
-            if (ImGui::MenuItem("Redo", "CTRL+Y")) {}
-            ImGui::Separator();
-            if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-            if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-            if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+            if (ImGui::MenuItem("Unload All", "CTRL+SHIFT+U")) {
+                UnloadAllImages();
+            }
             ImGui::EndMenu();
 		}
         ImGui::EndMenuBar();
     }
 }
 
-void Application::SaveImageWindow() {
-
-
-}
-
 void Application::DisplayDenoiseParamMenu() {
 
-#pragma region SF
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
-    if (ImGui::Button("Smooth LF All", ImVec2(0, 0)) && currselection != nullptr) {
-        BatchSmoothFilter();
-	    refresh = true;
-    }
 
-    ImGui::InputFloat("Strength##SF", &filterParameters.SFParameter.strength, 0.02f, 0.2f);
-    ImGui::PopItemWidth();
 
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+    enum DenoiserTypes
+    {
+        Auto,
+        SmoothLin,
+        Bilateral,
+        Wavelet
+    };
 
-    ImGui::InputInt("HalfWidth##SF", &filterParameters.SFParameter.kernelWidth, 1, 5);
-    ImGui::InputInt("HalfHeight##SF", &filterParameters.SFParameter.kernelHeight, 1, 5);
+    const char* denoiserTypes[] = {
+        "Auto",
+        "Smooth Linear Filter",
+        "Bilateral Filter",
+        "Discrete Wavelet Denoiser"
+    };
 
-    ImGui::PopItemWidth();
 
-#pragma endregion
+    static int denoiserSelection;
 
-#pragma region BF
+    constexpr int denoiserCount = std::size(denoiserTypes);
 
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
-    if (ImGui::Button("Bilateral Filter", ImVec2(0, 0)) && currselection != nullptr) {
-        BilateralFilter(currselection);
-        refresh = true;
-    }
+    ImGui::Combo("Denoiser", &denoiserSelection, denoiserTypes, denoiserCount);
+    ImGui::Separator();
+    ImGui::Text(denoiserTypes[denoiserSelection]);
 
-    ImGui::InputFloat("Strength Spatial##BF", &filterParameters.BFParameter.sigmaSpatial, 1, 5);
-    ImGui::InputFloat("Strength Intensity##BF", &filterParameters.BFParameter.sigmaColor, 1, 5);
-    ImGui::PopItemWidth();
+    switch (denoiserSelection) {
+    default:
+        ImGui::Text("An error occured while fetching denoisers");
+        break;
 
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
-    ImGui::InputInt("Half Width##BF", &filterParameters.BFParameter.kernelWidth, 1, 5);
-    ImGui::SameLine();
-    ImGui::InputInt("Half Height##BF", &filterParameters.BFParameter.kernelHeight, 1, 5);
-    ImGui::PopItemWidth();
-    
-#pragma endregion
+    case Auto:
+
 
 #pragma region DWT
-    ImGui::Separator();
-    ImGui::Text("DWT Denoising");
-    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
-    ImGui::InputInt("Decomposition Level##DWT", &filterParameters.DWTParameter.decimationLevel, 1, 2);
-    ImGui::PopItemWidth();
-    if (ImGui::Button("DWT Denoise##DWT", ImVec2(0, 0)) && currselection != nullptr) {
-        DWTDenoise(currselection);
-        refresh = true;
-	}
+        if (ImGui::Button("Start##DWT", ImVec2(0, 0)) && currselection != nullptr) {
+            filterParameters.DWTParameter.Reset(); //Use default values for filter
+            BatchDWTDenoise();
+            refresh = true;
+        }
 #pragma endregion
+
+        break;
+    case SmoothLin:
+#pragma region SF
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
+
+        ImGui::InputFloat("Strength##SF", &filterParameters.SFParameter.strength, 0.02f, 0.2f);
+        ImGui::PopItemWidth();
+
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+
+        ImGui::InputInt("HalfWidth##SF", &filterParameters.SFParameter.kernelWidth, 1, 5);
+        ImGui::InputInt("HalfHeight##SF", &filterParameters.SFParameter.kernelHeight, 1, 5);
+
+        ImGui::PopItemWidth();
+
+        if (ImGui::Button("Smooth Linear Filter", ImVec2(0, 0)) && currselection != nullptr) {
+            BatchSmoothFilter();
+            refresh = true;
+        }
+#pragma endregion
+
+        break;
+
+
+    case Bilateral:
+#pragma region BF
+
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 200.0f));
+
+        ImGui::InputFloat("Strength Spatial##BF", &filterParameters.BFParameter.sigmaSpatial, 1, 5);
+        ImGui::InputFloat("Strength Intensity##BF", &filterParameters.BFParameter.sigmaColor, 1, 5);
+        ImGui::PopItemWidth();
+
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+        ImGui::InputInt("Half Width##BF", &filterParameters.BFParameter.kernelWidth, 1, 5);
+        ImGui::SameLine();
+        ImGui::InputInt("Half Height##BF", &filterParameters.BFParameter.kernelHeight, 1, 5);
+        ImGui::PopItemWidth();
+
+        if (ImGui::Button("Bilateral Filter", ImVec2(0, 0)) && currselection != nullptr) {
+            BilateralFilter(currselection);
+            refresh = true;
+        }
+#pragma endregion
+
+
+        break;
+    case Wavelet:
+
+
+
+#pragma region DWT
+        ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 100.0f));
+        ImGui::InputInt("Decomposition Level##DWT", &filterParameters.DWTParameter.decimationLevel, 1, 2);
+        ImGui::PopItemWidth();
+        if (ImGui::Button("Start##DWT", ImVec2(0, 0)) && currselection != nullptr) {
+            BatchDWTDenoise();
+            refresh = true;
+        }
+#pragma endregion
+        break;
+
+    }
+
 }
 
 void Application::ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func) {  
@@ -295,6 +334,10 @@ void Application::ForAllSelectedImage(const std::function<void(std::shared_ptr<I
 }
 
 void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
+
+	//Modified from the example multi-selection with deletion widget
+    //of ImGui example projects
+
     // Options
     enum WidgetType { WidgetType_Selectable, WidgetType_TreeNode };
     static bool use_clipper = true;
@@ -376,9 +419,9 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
                 const char* item_category = "";
                 char label[256];
 
-                std::filesystem::path item_path = Manager.GetPath_path(n);
-                std::filesystem::path filename = item_path.filename();
-                std::filesystem::path parentDir = item_path.parent_path();
+                fs::path item_path = Manager.GetPath_path(n);
+                fs::path filename = item_path.filename();
+                fs::path parentDir = item_path.parent_path();
 
                 std::string fileIdentifier = item_path.parent_path().filename().string() + "/" + item_path.filename().string();
 
@@ -394,8 +437,15 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
                 // of the selection scope doesn't erroneously alter our selection.
                 if (show_color_button)
                 {
-                    ImU32 dummy_col = (ImU32)((unsigned int)n * 0xC250B74B) | IM_COL32_A_MASK;
-                    ImGui::ColorButton("##", ImColor(dummy_col), ImGuiColorEditFlags_NoTooltip, color_button_sz);
+                    ImColor col = ImColor(255, 0, 0);
+                    if (Manager.GetImage(n)->IsLoaded()) {
+                        col = ImColor(128, 128, 128);
+                    }
+                    if (Manager.GetImage(n)->IsDecompressed()) {
+                        col = ImColor(0, 255, 0);
+                    }
+
+                    ImGui::ColorButton("##", col, ImGuiColorEditFlags_NoTooltip, color_button_sz);
                     ImGui::SameLine();
                 }
 
@@ -495,25 +545,6 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
             Multiselection.ApplyDeletionPostLoop(ms_io, items, item_curr_idx_to_focus);
         }
 
-
-        //Batch load
-        if (ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_L)) {
-            ForAllSelectedImage([](std::shared_ptr<ImageEntry> image) {
-                std::thread thread([image]() {
-                    if (image) {
-                        if (image->LoadImage() != 0)
-                            std::printf("Fail to load image file");
-                    }
-                });
-                thread.detach();
-			});
-
-            for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
-                if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
-                }
-            }
-        }
-
         if (widget_type == WidgetType_TreeNode)
             ImGui::PopStyleVar();
 
@@ -523,9 +554,176 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
 
 }
 
+fs::path PathCleanup(fs::path inputPath) {
+    std::regex rgxvalidspace(R"([\s\\]*(\\)[\s\\]*)");
+    std::regex rgxvalidchar(R"([^\w:\\\[\]\(\)]\%)");
+    std::string regexBuffer = std::regex_replace(inputPath.string(), rgxvalidspace, "$1");
+    regexBuffer = std::regex_replace(regexBuffer, rgxvalidchar, "");
+    return regexBuffer;
+}
+
 void Application::DisplayImageSaveMenu()
 {
+    static char buf[256] = "";
 
+    ImGui::PushItemWidth(std::min(ImGui::GetContentRegionAvail().x, 400.0f));
+
+    //preliminary path clean-up
+    if (ImGui::InputText("string", buf, IM_ARRAYSIZE(buf))) {
+        //Remove space before and after slashes (Invalid spaces)
+        strcpy_s(buf, PathCleanup(buf).string().c_str());
+    }
+
+    ImGui::PopItemWidth();
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Open with File Explorer")) {
+        const char* folder = OpenFolderDialogue("Choose destination directory");
+        if (folder != nullptr) {
+            std::string folderstr(folder);
+            size_t len = folderstr.length();
+            if (len + 1 < sizeof(buf)) {
+                strcpy_s(buf, folderstr.c_str());
+            }
+        }
+    }
+
+    static int currentFormat = 0;
+    ImGui::Combo("Format", &currentFormat, formatfilter, formatfiltercount);
+
+
+    if (ImGui::Button("Save Image As")) {
+
+        std::unordered_map<std::string, ValidFormatter> formatter{
+        {"\\[DATE\\(\(.*?\)\\)\\]", [](std::smatch match) {
+                time_t rawtime;
+                struct tm* timeinfo;
+
+                time(&rawtime);
+                timeinfo = localtime(&rawtime);
+                std::stringstream ss;
+                ss << std::put_time(timeinfo, match[1].str().c_str());
+                return ss.str();
+
+            }}
+        };
+
+        std::vector<std::tuple<fs::path, const RGBAImageI>> imageSaveList;
+
+        //Make sure to maintain read permission to lock writes
+        std::vector<std::tuple<slockmutex, std::shared_ptr<const RGBAImageI>>> readperms;
+        int count = 0;
+
+        for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
+            if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
+
+                std::shared_ptr<ImageEntry> image = Manager.GetImage(idx);
+                if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
+                    readperms.push_back(image->RGBAIRead());
+                    auto& readperm = readperms[count];
+                    auto RGBAImageIptr = std::get<1>(readperm);
+                    count++;
+
+                    //Insert extra, file dependent formatter after
+                    formatter.insert({ "\\[FILENAME\\]", [&](std::smatch str) {
+                          return image->GetFileName().stem().string(); } });
+
+                    fs::path filepath = fs::path(buf) / fs::path(image->GetFileName());
+                    filepath = FormatPath(formatter, filepath);
+                    filepath = PathCleanup(filepath);
+
+                    imageSaveList.push_back(std::make_tuple(filepath, *RGBAImageIptr));
+                }
+                else {
+                    return;
+                }
+            }
+        }
+
+        SaveImages(imageSaveList, static_cast<ImageFormat>(currentFormat));
+
+    }
+}
+
+void Application::DisplayDebugMenu()
+{
+    ImGui::Checkbox("Use Memory Compression", &g_useCompress);
+
+    if (ImGui::Button("Load all image"))
+        for (size_t i = 0; i < Manager.GetImageCount(); i++)
+            Manager.LoadImage(i);
+
+    if(ImGui::Button("Compress all image"))
+        for (size_t i = 0; i < Manager.GetImageCount(); i++)
+            Manager.TryCompress(i);
+
+    if (ImGui::Button("Decompress all image"))
+        for (size_t i = 0; i < Manager.GetImageCount(); i++)
+            Manager.TryDecompress(i);
+}
+
+void Application::DisplayTerminal()
+{
+
+    float availx = ImGui::GetContentRegionAvail().x;
+    float availy = ImGui::GetContentRegionAvail().y;
+
+    ImGui::InputTextMultiline("Output", &buf[currFirstCharOffset], terminalSizeLimit - currFirstCharOffset, ImGui::GetContentRegionAvail(), ImGuiInputTextFlags_ReadOnly);
+}
+
+void Application::LogTerminal(std::string log) {
+
+    //Clears terminal
+    memset(buf, '\n', terminalSizeLimit);
+
+    logs.insert(logs.begin(), log);
+    while (logs.size() > 1000) {
+        logs.erase(logs.end() - 4, logs.end());
+    }
+
+    int index = terminalSizeLimit;
+
+    for (std::string logmsg : logs) {
+        int temp = index - logmsg.length() - 1;
+        if (temp >= 0) {
+            index -= logmsg.length();
+            memcpy(&buf[index], logmsg.c_str(), logmsg.length());
+        }
+        else {
+            break;
+        }
+    }
+
+    currFirstCharOffset = index;
+    buf[terminalSizeLimit - 1] = '\0';
+
+    return;
+}
+
+void Application::ShortcutChecks()
+{
+
+    //Shortcut to open files
+    if (ImGui::Shortcut(ImGuiMod_Ctrl | ImGuiKey_O, ImGuiInputFlags_Repeat | ImGuiInputFlags_RouteGlobal)) {
+        OpenImageFile();
+    }
+    
+
+    if (ImGui::Shortcut(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_A)) {
+        LoadAllImages();
+    }
+    if (ImGui::Shortcut(ImGuiMod_Shift | ImGuiMod_Ctrl | ImGuiKey_U)) {
+        UnloadAllImages();
+    }
+
+    if (ImGui::Shortcut(ImGuiKey_C | ImGuiMod_Ctrl, ImGuiInputFlags_RouteGlobal)) {
+        LoadImGuiSettings();
+    }
+
+    if (ImGui::Shortcut(ImGuiKey_C | ImGuiMod_Shift | ImGuiMod_Ctrl, ImGuiInputFlags_RouteGlobal)) {
+        SaveImGuiSettings();
+    }
 }
 
 void Application::LoadAllImages() {
@@ -534,6 +732,7 @@ void Application::LoadAllImages() {
         for (auto& image : Manager) {
             if (image->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
                 image->LoadImage();
+                image->TryCompressImageData();
             }
         }
 	});
@@ -541,20 +740,61 @@ void Application::LoadAllImages() {
     thread.detach();
 }
 
+void Application::UnloadAllImages()
+{
+    std::thread thread([this]() {
+        for (auto& image : Manager) {
+            if (image->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
+                image->TryCompressImageData();
+                image->UnloadImage();
+            }
+        }
+        });
+
+    thread.detach();
+}
+
+
 void Application::OpenImageFile() {
     std::vector<std::string> paths;
-    ImageSelection(formatfilter, formatfiltercount, paths);
-    ImportFiles(paths);
+    FileSelection("Select an image", "", formatfilter, formatfiltercount, "Image", true, paths);
+    ImportImages(paths);
 }
+
+void Application::LoadImGuiSettings()
+{
+    const char* imguiini[] = { ".ini" };
+    std::vector<std::string> path;
+    if (FileSelection("Select Config File", "", imguiini, 1, "ImGui Ini", false, path) == 0) {
+        ImGui::LoadIniSettingsFromDisk(path[0].c_str());
+    }
+}
+
+void Application::SaveImGuiSettings()
+{
+    const char* imguiini[] = { ".ini" };
+    const char* saveloc = tinyfd_saveFileDialog("Save Config", "", 1, imguiini, "ImGui Ini");
+    if (saveloc != NULL) {
+        ImGui::SaveIniSettingsToDisk(saveloc);
+    }
+}
+
+
 
 int Application::Run() {
 
-    GLFWwindow* window;
+    GLFWwindow* window = nullptr;
     InitWindow(window);
+
+    ImGuiIO& io = ImGui::GetIO();
+
+    LogTerminal(io.IniFilename);
 
     ImGuiID g_viewport_id = ImGui::GetMainViewport()->ID;
 
     std::shared_ptr<ImageEntry> prevselection = nullptr;
+
+    if (window == nullptr) throw std::runtime_error("Window could not be initialize");
 
     while (!glfwWindowShouldClose(window))
     {
@@ -578,49 +818,61 @@ int Application::Run() {
 
         BuildDock();
 
+        ShortcutChecks();
+
         ImGuiIO& io = ImGui::GetIO();
 
 		ImGui::SetNextWindowSize(ImVec2(1280, 720), ImGuiCond_FirstUseEver);
 
-        ImGui::Begin("ImageDenoisingParameter");
+        ImGui::Begin("Image Denoising Parameter");
         {
             DisplayDenoiseParamMenu();
         }
+        ImGui::End();
 
-        if (refresh) {
-            refresh = !refresh;
-            Manager.RefreshRenderer(nullptr);
+        ImGui::Begin("Save Image", nullptr);
+        {
+            DisplayImageSaveMenu();
         }
 
+        ImGui::End();
+
+        if (g_useAdvanced) {
+            ImGui::Begin("Advanced Options", nullptr);
+            {
+                DisplayDebugMenu();
+            }
+            ImGui::End();
+        }
+
+
+        ImGui::Begin("Terminal", nullptr);
+        {
+            DisplayTerminal();
+        }
         ImGui::End();
 
 		ImGui::Begin("Preview", nullptr);
 
+        if (currselection != nullptr) {
+            if (currselection->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
+                ImGui::Text("FAILED TO LOAD IMAGE");
+            }
+            else {
 
-        ImGui::BeginChild("ImagePreview", ImVec2(0, 0));
-        {
-            if (currselection != nullptr) {
-                if (currselection->GetStatus() == ImageEntry::CompressionStatus::NOT_LOADED) {
-                    ImGui::Text("FAILED TO LOAD IMAGE");
-                }
-                else {
+                ImGui::LabelText("info", "File path: %s", currselection->GetFileName().string().c_str());
+                ImVec2 dim = ImVec2(currselection->GetWidth(), currselection->GetHeight());
+                ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
 
-                    ImGui::LabelText("info", "File path: %s", currselection->GetFileName().string().c_str());
-                    ImVec2 dim = ImVec2(currselection->GetWidth(), currselection->GetHeight());
-                    ImGui::LabelText("Dimension", "%d x %d", static_cast<int>(dim.x), static_cast<int>(dim.y));
-
-					ImGui::BeginChild("ImageRenderer", ImVec2(0, 0), ImGuiChildFlags_Borders);
-                    auto renderer = Manager.GetRenderer(currselection);
-                    renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
-					ImGui::EndChild();
-                }
+				ImGui::BeginChild("ImageRenderer", ImVec2(0, 0), ImGuiChildFlags_Borders);
+                auto renderer = Manager.GetRenderer(currselection);
+                renderer->DisplayImage(ImVec2(64, 64), TheGoodBlueColor);
+				ImGui::EndChild();
             }
         }
 
-        ImGui::EndChild();
-
         ImGui::End();
-
+        
         ImGui::Begin("ImageListView", nullptr, ImGuiWindowFlags_NoNav);
         {
 
@@ -630,26 +882,31 @@ int Application::Run() {
 
             ImVec2 pos = ImGui::GetCursorScreenPos();
 
-            //Check shortcuts
-            if(ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_O)) {
-				OpenImageFile();
-            }
-            else if (ImGuiCheckShortcuts(ImGuiKey_LeftCtrl, ImGuiKey_L)) {
-				LoadAllImages();
-            }
             
 			DisplayImageList(currselection);
 
+            static int previousload = 0;
+
             if (currselection != prevselection) {
                 if (currselection != nullptr) {
-                    if (currselection->LoadImage() == 0) 
-                        Manager.CreateRenderer(currselection)->LoadGPU();
-                    else {
-                        std::printf("Fail to load image file");
+                    int load = currselection->LoadImage();
+                    previousload = load;
+                    if (load != 0) {
+                        Manager.CreateErrorRenderer(currselection, "Fail to load image")->LoadGPU();
+                        LogTerminal("Fail to load image file\n");
                     }
+                    else if (load == 0 && currselection->DecompressImageData() == 0)
+                        Manager.CreateImageRenderer(currselection)->LoadGPU();
                 }
                 if (prevselection != nullptr) {
                     Manager.DestroyRenderer(prevselection);
+
+                    if (g_useCompress && previousload == 0) {
+                        std::cout << previousload;
+                        prevselection->TryCompressImageData();
+
+                        //Tries to compress once, if fail, ignores compression
+                    }
                 }
                 prevselection = currselection;
             }
@@ -661,6 +918,7 @@ int Application::Run() {
             ImGui::PopStyleVar();
             ImGui::End();
         }
+
         // Rendering
         ImGui::Render();
         int display_w, display_h;
@@ -698,117 +956,102 @@ int Application::Run() {
     return 0;
 }
 
+
+
 void Application::DEBUGRUN(const char* infiles) {
     //Only runs in debug compile MSVC   
 #ifdef DEBUG
-
-    //Format filter
-    const char* formatfilter[] = {
-        "*.jpg",
-        "*.png",
-        "*.qoi",
-    };
 
 
     std::vector<std::string> paths;
 
     SplitPaths(infiles, paths);
 
-    for (std::string s : paths) {
-        std::cout << s << "\n";
-    }
+    //SplitPaths(infiles, paths);
+    ImportImages(paths);
 
-    ImportFiles(paths);
-    std::vector<RGBAImageI> ImageBuffer;
-    for (auto image : Manager) {
-
-        if (image == nullptr) {
-            std::cout << "No image loaded" << std::endl;
-            return;
-        }
-
-        image->LoadImage();
-
-        auto imageData = image->ReadImageData();
-
-        Denoiser::DWT::DecTree dectree = Denoiser::DWT::DecTree(imageData, image->GetWidth(), image->GetHeight());
-
-
-        auto imGray1 = dectree.GetImageRGB(1, 0, 0);
-        auto pixel1 = imGray1.GetPixel(1213, 218);
-
-
-		std::print("Pixel at (1213, 218): R={}, G={}, B={}, A={}\n", pixel1.r, pixel1.g, pixel1.b, pixel1.a);
-
-        std::cout << (dectree.ExpandTree(3)) << "\n";
-        Denoiser::VisuShrink visushrinker = Denoiser::VisuShrink();
-
-		dectree.Thresholding(visushrinker);
-
-        std::cout << dectree.CollapseTree() << "\n";
-
-        auto imGray2 = dectree.GetImageRGB(1, 0, 0);
-        auto pixel2 = imGray2.GetPixel(1213, 218 );
-
-        std::print("Pixel at (1213, 218): R={}, G={}, B={}, A={}\n", pixel2.r, pixel2.g, pixel2.b, pixel2.a);
-
-
-        ImageBuffer.push_back(imGray1);
-        ImageBuffer.push_back(imGray2);
-    }
-
-    for (int i = 0; i < ImageBuffer.size(); ++i) {
-        int n = 0;
-        Manager.ImportFromSpan(
-            ImageBuffer[i].data,
-            static_cast<unsigned int>(ImageBuffer[i].width),
-            static_cast<unsigned int>(ImageBuffer[i].height),
-            ("Test File Name ") + (n++));
-    }
-
-    
 #endif // DEBUG
+    return;
 
+}
+
+void Application::BENCHMARKRUN(const char* infiles)
+{
+    //Only runs in perftest
+#ifdef BENCHMARK
+
+    std::vector<std::string> paths;
+
+    SplitPaths(infiles, paths);
+
+    //SplitPaths(infiles, paths);
+    ImportImages(paths);
+
+
+    auto timer = std::chrono::high_resolution_clock();
+    auto start = timer.now();
+
+
+    for (auto image : Manager) {
+        std::cout << "Denoised " << image << std::endl;
+        DWTDenoise(image);
+    }
+
+
+    auto end = timer.now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    std::printf("Took Benchmark %lld ms\n", elapsed.count());
+
+
+#endif // DEBUG
     return;
 }
 
-void Application::ImportFiles(std::span<std::string> paths) {
+void Application::ImportImages(std::span<std::string> paths) {
     for (auto& path : paths) Manager.ImportFromFile(path);
 }
 
+
+#pragma region Denoiser wrappers
+
+
 void Application::SmoothFilter(std::shared_ptr<ImageEntry> image)
 {
-	auto param = filterParameters.SFParameter;
+    auto param = filterParameters.SFParameter;
     bool isDecompressed = image->IsDecompressed();
 
     if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
         std::print("Successfully load and decompress");
         std::jthread([this, image, param, isDecompressed]() {
 
-    #ifdef DEBUG
+#ifdef DEBUG
             auto timer = std::chrono::high_resolution_clock();
             auto start = timer.now();
-    #endif // DEBUG
+#endif // DEBUG
 
-            auto readwriteperm = image->ReadWriteImageData();
+            {
+                auto readwriteperm = image->ReadWriteImageData();
 
-            Denoiser::SmoothLF(
-                std::get<1>(readwriteperm),
-                static_cast<unsigned int>(image->GetWidth()),
-                static_cast<unsigned int>(image->GetHeight()),
-                param.kernelWidth, param.kernelHeight, param.strength);
+                Denoiser::SmoothLF(
+                    std::get<1>(readwriteperm),
+                    static_cast<unsigned int>(image->GetWidth()),
+                    static_cast<unsigned int>(image->GetHeight()),
+                    param.kernelWidth, param.kernelHeight, param.strength);
 
+            }
 
-    #ifdef DEBUG
+#ifdef DEBUG
             auto end = timer.now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
-    #endif // DEBUG
+            LogTerminal("Took SLF " + std::to_string(elapsed.count()) + " ms\n");
+#endif // DEBUG
 
-            if (!isDecompressed) image->CompressImageData();
+            LogTerminal("Done SLF " + image->GetFileName().string() + "\n");
 
-            this->Manager.RefreshRenderer(image);
+            if (!isDecompressed) image->TryCompressImageData();
+
             }).detach();
     }
     else {
@@ -817,35 +1060,37 @@ void Application::SmoothFilter(std::shared_ptr<ImageEntry> image)
 }
 
 void Application::BilateralFilter(std::shared_ptr<ImageEntry> image) {
-	auto param = filterParameters.BFParameter;
+    auto param = filterParameters.BFParameter;
     bool isDecompressed = image->IsDecompressed();
 
-    if (image->LoadImage() == 0 || image->DecompressImageData() == 0) {
+    if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
         std::jthread([this, image, param, isDecompressed]() {
 
 #ifdef DEBUG
             auto timer = std::chrono::high_resolution_clock();
             auto start = timer.now();
 #endif // DEBUG
+            {
 
-			auto readwriteperm = image->ReadWriteImageData();
+                auto readwriteperm = image->ReadWriteImageData();
 
-            Denoiser::BilateralFilter(
-                std::get<1>(readwriteperm),
-                static_cast<unsigned int>(image->GetWidth()),
-                static_cast<unsigned int>(image->GetHeight()),
-                param.kernelWidth, param.kernelHeight,
-                param.sigmaSpatial, param.sigmaColor);
+                Denoiser::BilateralFilter(
+                    std::get<1>(readwriteperm),
+                    static_cast<unsigned int>(image->GetWidth()),
+                    static_cast<unsigned int>(image->GetHeight()),
+                    param.kernelWidth, param.kernelHeight,
+                    param.sigmaSpatial, param.sigmaColor);
+            }
 
 #ifdef DEBUG
             auto end = timer.now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+            LogTerminal("Took BL " + std::to_string(elapsed.count()) + " ms\n");
 #endif // DEBUG
-			if (!isDecompressed) image->CompressImageData();
 
-            this->Manager.RefreshRenderer(image);
+            LogTerminal("Done BL " + image->GetFileName().string() + "\n");
+            if (!isDecompressed) image->TryCompressImageData();
 
             }).detach();
     }
@@ -859,31 +1104,32 @@ void Application::DWTDenoise(std::shared_ptr<ImageEntry> image)
     auto param = filterParameters.DWTParameter;
     bool isDecompressed = image->IsDecompressed();
 
-    if (image->LoadImage() == 0 || image->DecompressImageData() == 0) {
+    if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
         std::jthread([this, image, param, isDecompressed]() {
 
 #ifdef DEBUG
             auto timer = std::chrono::high_resolution_clock();
             auto start = timer.now();
 #endif // DEBUG
+            {
+                int a = 1;
+                auto readwriteperm = image->ReadWriteImageData();
 
-            auto readwriteperm = image->ReadWriteImageData();
-
-            Denoiser::DWT(
-				std::get<1>(readwriteperm),
-				static_cast<unsigned int>(image->GetWidth()),
-				static_cast<unsigned int>(image->GetHeight()),
-				param.decimationLevel);
-
+                Denoiser::DWT(
+                    std::get<1>(readwriteperm),
+                    static_cast<unsigned int>(image->GetWidth()),
+                    static_cast<unsigned int>(image->GetHeight()),
+                    param.decimationLevel);
+            }
 #ifdef DEBUG
             auto end = timer.now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-            std::cout << "Took " << elapsed.count() << " ms" << std::endl;
+            LogTerminal("Took DWT " + std::to_string(elapsed.count()) + " ms\n");
 #endif // DEBUG
-            if (!isDecompressed) image->CompressImageData();
 
-            this->Manager.RefreshRenderer(image);
+            LogTerminal("Done DWT " + image->GetFileName().string() + "\n");
+            if (!isDecompressed) image->TryCompressImageData();
 
             }).detach();
     }
@@ -892,7 +1138,11 @@ void Application::DWTDenoise(std::shared_ptr<ImageEntry> image)
     }
 }
 
-//Batch filter all selected items. This 
+#pragma endregion
+
+
+#pragma region Batch fitlers
+
 void Application::BatchSmoothFilter()
 {
     ForAllSelectedImage([this](std::shared_ptr<ImageEntry> image) {
@@ -904,16 +1154,19 @@ void Application::BatchBilateralFilter()
 {
     ForAllSelectedImage([this](std::shared_ptr<ImageEntry> image) {
         BilateralFilter(image);
-    });
+        });
 }
-
 
 void Application::BatchDWTDenoise()
 {
+    ForAllSelectedImage([this](std::shared_ptr<ImageEntry> image) {
+        DWTDenoise(image);
+        });
 }
 
-std::filesystem::path Application::ExtendsFileName(std::filesystem::path file, std::string extends) 
-    { return std::filesystem::path(file.parent_path().string() + "/" + file.stem().string() + extends + file.extension().string()); }
+#pragma endregion
 
-
-
+void LogtoAppTerminal(std::string logmsg)
+{
+    Application::currentApp->LogTerminal(logmsg);
+}

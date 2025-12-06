@@ -290,4 +290,3 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 
 	return 0;
 }
-

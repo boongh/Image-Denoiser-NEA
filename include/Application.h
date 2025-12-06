@@ -24,9 +24,10 @@
 #include "../libs/emscripten/emscripten_mainloop_stub.h"
 #endif
 
-#include <algorithm> // For std::max, std::min
-#include <iostream> // For std::cout, std::cerr
-#include <functional> // For std::function
+#include <algorithm>
+#include <iostream>
+#include <functional>
+#include <queue>
 
 //File read write lib
 
@@ -42,7 +43,11 @@
 //Image container
 #include <ImageContainer.h>
 
+
+#define TheGoodBlueColor ImVec4(64, 145, 190, 0)
+
 // Extra functions to add deletion support to ImGuiSelectionBasicStorage
+//Included in the ImGui examples
 class ExampleSelectionWithDeletion : public ImGuiSelectionBasicStorage {
 public:
 
@@ -107,29 +112,43 @@ public:
 };
 
 
+void LogtoAppTerminal(std::string logmsg);
+
+/// <summary>
+/// Wrapper class around the entire application to avoid global variables
+/// </summary>
 class Application {
 public:
 
+    static Application* currentApp;
     bool refresh = false;
 
     struct FilterParameters {
         struct BilateralFilterParameters {
-            float sigmaSpatial = 0.2f;
-            float sigmaColor = 0.2f;
-            int kernelWidth = 5;
-            int kernelHeight = 5;
+            float sigmaSpatial;
+            float sigmaColor;
+            int kernelWidth;
+            int kernelHeight;
+
+            BilateralFilterParameters() {
+                Reset();
+            }
             void Reset() {
-                sigmaSpatial = 1.0f;
-                sigmaColor = 0.1f;
+                sigmaSpatial = 0.2f;
+                sigmaColor = 0.2f;
                 kernelWidth = 5;
                 kernelHeight = 5;
             }
         };
 
         struct SmoothFilterParameters {
-            float strength = 1.0f;
-            int kernelWidth = 5;
-            int kernelHeight = 5;
+            float strength;
+            int kernelWidth;
+            int kernelHeight;
+
+            SmoothFilterParameters() {
+                Reset();
+            }
             void Reset() {
                 strength = 1.0f;
                 kernelWidth = 5;
@@ -138,7 +157,11 @@ public:
         };
 
         struct DWTParameters {
-            int decimationLevel = 1;
+            int decimationLevel;
+
+            DWTParameters() {
+                Reset();
+            }
             void Reset() {
                 decimationLevel = 1;
             }
@@ -149,30 +172,21 @@ public:
 		DWTParameters DWTParameter;
     };
 
-    enum RenamingScheme
-    {
-        ReuseName = 1,
-		AppendNumber = 2,
-        AppendDate = 4,
-        AppendTime = 8,
-
-    };
-
 	FilterParameters filterParameters;
 
-    //Format filter
-    const static char* formatfilter[];
-	const int formatfiltercount = 3;
+    Application(ImVec4 backgroundColor = TheGoodBlueColor);
 
-    Application(ImVec4 backgroundColor = ImVec4(0.45f, 0.55f, 0.60f, 1.00f));
     int Run();
-
-    template <typename ... Args>
-	bool ImGuiCheckShortcuts(Args &&...args);
 
     void DEBUGRUN(const char* infiles);
 
-    void ImportFiles(std::span<std::string> paths);
+    void BENCHMARKRUN(const char* infiles);
+
+
+
+    void ImportImages(std::span<std::string> paths);
+    void LogTerminal(std::string log);
+
 
 #pragma region Denoiser Caller
 
@@ -186,23 +200,31 @@ public:
 	void BatchDWTDenoise();
 
 #pragma endregion
-
-
-
-    std::filesystem::path ExtendsFileName(std::filesystem::path file, std::string extends);
 private:
 
     int InitWindow(GLFWwindow*& windowRet);
     static void glfw_error_callback(int error, const char* description);
+
+    /// <summary>
+    /// Build a dock inside the main OpenGL window
+    /// </summary>
     void BuildDock();
 
-    int ImageSelection(const char* const* formatfilter, unsigned int filtercount, std::vector<std::string>& paths);
-
     void DisplayMenu();
-    void SaveImageWindow();
     void DisplayDenoiseParamMenu();
 	void DisplayImageList(std::shared_ptr<ImageEntry>& selection);
 	void DisplayImageSaveMenu();
+    void DisplayDebugMenu();
+
+    void DisplayTerminal();
+
+    static const int terminalSizeLimit = 1 << 12;
+    char buf[terminalSizeLimit];
+    int currFirstCharOffset = terminalSizeLimit;
+
+    std::vector<std::string> logs;
+
+    void ShortcutChecks();
 
     void ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func);
 
@@ -217,7 +239,14 @@ private:
     ImGuiID g_ImagePreview;
 
     bool g_firstframe = true;
-    bool g_useCompress = false;
+    bool g_useCompress = true;
+
+#ifdef DEBUG
+    bool g_useAdvanced = true;
+#else
+    bool g_useAdvanced = false;
+#endif // DEBUG
+
 
     ImageManager Manager;
 
@@ -226,11 +255,8 @@ private:
     
     //Menu functions for access outside of menu
     void LoadAllImages();
+    void UnloadAllImages();
 	void OpenImageFile();
+    void LoadImGuiSettings();
+    void SaveImGuiSettings();
 };
-
-template<typename ...Args>
-inline bool Application::ImGuiCheckShortcuts(Args && ...args)
-{	
-    return (ImGui::IsKeyDown(args) && ...);
-}

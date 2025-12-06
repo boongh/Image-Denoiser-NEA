@@ -52,8 +52,8 @@ namespace MathsUtils {
         // to handle potential over/underflow from floating-point arithmetic.
         return std::array<float, 3>{
             std::clamp(R, 0.0f, 1.0f),
-                std::clamp(G, 0.0f, 1.0f),
-                std::clamp(B, 0.0f, 1.0f)};
+            std::clamp(G, 0.0f, 1.0f),
+            std::clamp(B, 0.0f, 1.0f)};
     }
 
     float Channel_sRGBtoLRGB(float V)

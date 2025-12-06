@@ -10,22 +10,15 @@
 #include <cassert>
 
 #include <FileReader.h>
-#include <QOIFormat.h>
+#include "QOIFormat.h"
 #include "ImageContainer.h"
-
-#ifndef  STB_IMAGE_IMPLEMENTATION 
-#include <stb_image.h>
-#define  STB_IMAGE_IMPLEMENTATION 
-#endif // ! STB_IMAGE_IMPLEMENTATION 
 
 #include <span>
 #include <set>
 
-
 #pragma endregion
 
 
-#pragma region Image Manager
 //<---Image Manager class implementation--->
 
 size_t ImageManager::GetImageCount() { return imageEntries.size(); }
@@ -64,12 +57,12 @@ int ImageManager::ImportFromSpan(std::span<PixelRGBA> src, unsigned int width, u
 	return 0;
 }
 
-int ImageManager::LazyLoadImage(int index) {
+int ImageManager::LoadImage(int index) {
 	imageEntries[index]->LoadImage();
 	return 0;
 }
 
-int ImageManager::LazyLoadImage(std::shared_ptr<ImageEntry> imageEntry) {
+int ImageManager::LoadImage(std::shared_ptr<ImageEntry> imageEntry) {
 	auto it = std::find(imageEntries.begin(), imageEntries.end(), imageEntry);
 	if (it != imageEntries.end()) {
 		(*it)->LoadImage();
@@ -98,19 +91,43 @@ ImageEntry::CompressionStatus ImageManager::GetStatus(int index) const {
 }
 
 void ImageManager::Compress(int index) { imageEntries[index]->CompressImageData(); }
-void ImageManager::Decompress(int index) { imageEntries[index]->DecompressImageData(); }
+void ImageManager::TryCompress(int index) { imageEntries[index]->TryCompressImageData(); }
 
-std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(int index) {
-	auto entry = imageEntries[index];
-	auto renderer = std::make_shared<ImageRenderer>(entry);
+void ImageManager::Decompress(int index) { imageEntries[index]->DecompressImageData(); }
+void ImageManager::TryDecompress(int index) { imageEntries[index]->TryDecompressImageData(); }
+
+std::shared_ptr<ImageRenderer> ImageManager::CreateImageRenderer(int index) {
+	std::shared_ptr<ImageEntry> entry = imageEntries[index];
+	auto renderer = ImageRenderer::CreateImageRenderer(entry);;
 	imageRenderers.insert({ entry, renderer });
 	return renderer;
 }
 
-std::shared_ptr<ImageRenderer> ImageManager::CreateRenderer(std::shared_ptr<ImageEntry> item) {
+std::shared_ptr<ImageRenderer> ImageManager::CreateImageRenderer(std::shared_ptr<ImageEntry> item) {
 	auto it = std::find(imageEntries.begin(), imageEntries.end(), item);
 	if(it != imageEntries.end()) {
-		auto renderer = std::make_shared<ImageRenderer>(item);
+		auto renderer = ImageRenderer::CreateImageRenderer(item);
+		imageRenderers.insert({ item, renderer });
+		return renderer;
+	}
+	else {
+		return nullptr; // ImageEntry not found
+	}
+}
+
+std::shared_ptr<ImageRenderer> ImageManager::CreateErrorRenderer(int index, const char* errMsg)
+{
+	std::shared_ptr<ImageEntry> entry = imageEntries[index];
+	auto renderer = ImageRenderer::CreateErrorRenderer(errMsg);
+	imageRenderers.insert({ entry, renderer });
+	return renderer;	
+}
+
+std::shared_ptr<ImageRenderer> ImageManager::CreateErrorRenderer(std::shared_ptr<ImageEntry> item, const char* errMsg)
+{
+	auto it = std::find(imageEntries.begin(), imageEntries.end(), item);
+	if (it != imageEntries.end()) {
+		auto renderer = ImageRenderer::CreateErrorRenderer(errMsg);
 		imageRenderers.insert({ item, renderer });
 		return renderer;
 	}
@@ -181,5 +198,3 @@ void ImageManager::RefreshRenderer(std::shared_ptr<ImageEntry> imageEntry = null
 		val->LoadGPU();
 	}
 }
-
-#pragma endregion

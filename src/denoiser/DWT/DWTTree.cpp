@@ -3,7 +3,7 @@
 
 Denoiser::DWT::DecTree::DecTree() : expanded(false), rootNode(nullptr)
 {
-		
+
 }
 
 Denoiser::DWT::DecTree::DecTree(std::span<const PixelRGBA> src, unsigned int width, unsigned int height) {
@@ -60,7 +60,7 @@ void TreeThresholder(std::shared_ptr<Denoiser::DWT::DecNode> node, int currentLe
 		TreeThresholder(node->low, currentLevel + 1, thresholder, isHigh);
 		TreeThresholder(node->high, currentLevel + 1, thresholder, true);
 	}
-	else if (isHigh){
+	else if (isHigh) {
 		thresholder.SoftThreshold(std::span<float>(node->brightnessData));
 	}
 }

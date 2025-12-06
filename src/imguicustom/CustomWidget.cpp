@@ -1,6 +1,7 @@
 #pragma once
 
 #include "CustomWidget.h"
+#include "Application.h"
 #include "ImageContainer.h"
 #include "imgui.h"
 #include <tinyfiledialogs.h>
@@ -9,7 +10,7 @@
 const char* OpenFileDialogue(const char* title, const char* const* filterPatterns, int filterCount)
 {
     const char* file = tinyfd_openFileDialog(
-        "Select an Image",
+        title,
         "",
         filterCount,
         filterPatterns,
@@ -18,14 +19,33 @@ const char* OpenFileDialogue(const char* title, const char* const* filterPattern
     );
 
     if (file) {
+#ifdef DEBUG
         std::cout << "Selected file: " << file << std::endl;
-        return file;
+#endif
     }
     else {
+#ifdef DEBUG
         std::cout << "No file selected." << std::endl;
+#endif
+    }
+    return file;
+
+}
+
+const char* OpenFolderDialogue(const char* title)
+{
+    const char* folder = tinyfd_selectFolderDialog(
+        "Select a Folder",
+        ""
+    );
+    if (folder) {
+        LogtoAppTerminal("Selected folder: " + std::string(folder) + "\n");
+        return folder;
+    }
+    else {
+        LogtoAppTerminal("No Folder Selected \n");
         return nullptr;
     }
-
 }
 
 void LoadImageTooltipWidget(unsigned int textureID, ImVec2 dimension, ImVec2 widgetDim, ImVec4 bgColor, float zoom)
