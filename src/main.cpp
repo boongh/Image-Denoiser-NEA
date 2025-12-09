@@ -15,10 +15,10 @@ int main() {
 #ifdef DEBUG
 #ifdef BENCHMARK
 	app1.BENCHMARKRUN(TESTDATA);
-
 #endif // BENCHMARK
 
-	app1.DEBUGRUN(TESTDATA2);
+	app1.DEBUGRUN(TESTDATA);
+
 
 #endif // DEBUG
 

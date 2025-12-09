@@ -246,6 +246,8 @@ int Denoiser::DWT(std::span<PixelRGBA> src, unsigned int width, unsigned int hei
 	//Copies result into src (inplace)
 	memcpy((void*)src.data(), (void*)resultImage.data.data(), sizeof(PixelRGBA) * src.size());
 
+	
+
 	return 0;
 }
 

@@ -232,6 +232,8 @@ private:
     bool g_useCompress = true;
     bool g_useDebug = true;
 
+    std::mutex logterminalLock = std::mutex();
+
     ImageManager Manager;
 
     std::shared_ptr<ImageEntry> currselection = nullptr;

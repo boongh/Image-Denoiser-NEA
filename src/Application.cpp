@@ -195,12 +195,6 @@ void Application::DisplayMenu() {
             if (ImGui::MenuItem("Open file", "CTRL+O")) {
 				OpenImageFile();
             }
-
-            if (ImGui::MenuItem("Redo", "CTRL+Y", false, false)) {} // Disabled item
-            ImGui::Separator();
-            if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-            if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-            if (ImGui::MenuItem("Paste", "CTRL+V")) {}
             ImGui::EndMenu();
         }
 
@@ -209,14 +203,18 @@ void Application::DisplayMenu() {
             if (ImGui::MenuItem("Load All", "CTRL+SHIFT+A")) {
 				LoadAllImages();
             }
-            if (ImGui::MenuItem("Undo", "CTRL+Z")) {}
-            if (ImGui::MenuItem("Redo", "CTRL+Y")) {}
-            ImGui::Separator();
-            if (ImGui::MenuItem("Cut", "CTRL+X")) {}
-            if (ImGui::MenuItem("Copy", "CTRL+C")) {}
-            if (ImGui::MenuItem("Paste", "CTRL+V")) {}
+
             ImGui::EndMenu();
 		}
+
+#ifdef DEBUG
+        if (ImGui::BeginMenu("Debug")) {
+            if (ImGui::MenuItem("Toggle Dev Mode", "CTRL+SHIFT+A")) {
+                g_useDebug = !g_useDebug;
+            }
+        }
+#endif //DEBUG
+
         ImGui::EndMenuBar();
     }
 }
@@ -652,6 +650,8 @@ void Application::DisplayImageSaveMenu()
 
 void Application::DisplayDebugMenu()
 {
+#ifdef DEBUG
+    
     ImGui::Checkbox("Use Memory Compression", &g_useCompress);
 
     if (ImGui::IsKeyDown(ImGuiMod_Ctrl)) {
@@ -690,6 +690,10 @@ void Application::DisplayDebugMenu()
         }
 
     }
+#else 
+    ImGui::Text("Compile with DEBUG defined to enable advanced dev mode");
+#endif //DEBUG
+
 }
 
 void Application::DisplayTerminal()
@@ -702,6 +706,11 @@ void Application::DisplayTerminal()
 }
 
 void Application::LogTerminal(std::string log) {
+
+    // Ensures terminal only print one line at a time
+    // Concurrent calls to this will be stalled until previous calls are done
+    // Orders are NOT guaranteed
+    std::unique_lock lock(logterminalLock);
 
     //Clears terminal
     memset(terminalbuffer, '\n', terminalSizeLimit);
@@ -895,13 +904,17 @@ int Application::Run() {
             
 			DisplayImageList(currselection);
 
-            if (currselection != prevselection) {
+            if (currselection != prevselection) {   
                 if (currselection != nullptr) {
                     int load = currselection->LoadImage();
+                    int decomp = currselection->TryDecompressImageData();
                     if (load != 0) {
-                        Manager.CreateErrorRenderer(currselection, "fail to load image");
+                        Manager.CreateErrorRenderer(currselection, "Fail to load image");
                     }
-                    else if (load == 0 && currselection->DecompressImageData() == 0)
+                    else if (decomp != 0){
+                        Manager.CreateErrorRenderer(currselection, "Fail to decompress image");
+                    }
+                    else if (load == 0 && decomp == 0)
                         Manager.CreateImageRenderer(currselection)->LoadGPU();
                     else {
                         LogTerminal("Fail to load image file");
@@ -910,7 +923,7 @@ int Application::Run() {
                 if (prevselection != nullptr) {
                     Manager.DestroyRenderer(prevselection);
                     if (g_useCompress) {
-                        int comp = prevselection->CompressImageData();
+                        int comp = prevselection->TryCompressImageData();
 
                         //Only fails if compressor fails unrocoverably
                         if (comp != 0) {
@@ -975,9 +988,11 @@ void Application::DEBUGRUN(const char* infiles) {
     std::vector<std::string> paths;
 
     SplitPaths(infiles, paths);
+    
+    ImportImages(paths);
 
     //SplitPaths(infiles, paths);
-    for (int i = 0; i < 3; i++) {
+    for (int i = 0; i < 25; i++) {
         ImportImages(paths);
         /*filterParameters.DWTParameter.decimationLevel = 1 + 2 * i;
         DWTDenoise(Manager.GetImage(i));*/
@@ -993,19 +1008,26 @@ void Application::BENCHMARKRUN(const char* infiles)
     //Only runs in debug compile MSVC   
 #ifdef BENCHMARK
 
+    auto timer = std::chrono::high_resolution_clock();
+    auto start = timer.now();
+
+
 
     std::vector<std::string> paths;
 
     SplitPaths(infiles, paths);
 
     //SplitPaths(infiles, paths);
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i <= 8; i++) {
         ImportImages(paths);
+        filterParameters.DWTParameter.decimationLevel = 1 + 2 * i;
+        DWTDenoise(Manager.GetImage(i));
     }
 
-    for (auto image : Manager) {
-        DWTDenoise(image);
-    }
+    auto end = timer.now();
+    auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    std::cout << "Took DWT " << std::to_string(elapsed.count()) << " ms\n";
 
 #endif // DEBUG
 
@@ -1108,8 +1130,10 @@ void Application::DWTDenoise(std::shared_ptr<ImageEntry> image)
     auto param = filterParameters.DWTParameter;
     bool isDecompressed = image->IsDecompressed();
 
-    if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
-        std::jthread([this, image, param, isDecompressed]() {
+    static std::atomic_int32_t count = 0;
+
+    std::jthread([this, image, param, isDecompressed]() {
+        if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
 #ifdef DEBUG
             auto timer = std::chrono::high_resolution_clock();
             auto start = timer.now();
@@ -1128,18 +1152,17 @@ void Application::DWTDenoise(std::shared_ptr<ImageEntry> image)
             auto end = timer.now();
             auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
-            LogTerminal("Took DWT " + std::to_string(elapsed.count()) + " ms\n");
+            std::cout << "Took DWT " << std::to_string(elapsed.count()) << " num " << count++ << " ms\n";
 #endif // DEBUG
 
             LogTerminal("Done DWT " + image->GetFileName().string() + "\n");
-            if (!isDecompressed) image->CompressImageData();
+            if (!isDecompressed) image->TryCompressImageData();
 
-
-            }).detach();
-    }
-    else {
-        std::print("Image Loading Fail");
-    }
+        }
+        else {
+            std::print("Image Loading Fail");
+        }
+   }).detach();
 }
 
 #pragma endregion

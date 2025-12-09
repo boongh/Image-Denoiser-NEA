@@ -42,14 +42,7 @@ std::tuple<std::shared_lock<std::shared_mutex>, std::shared_ptr<const RGBAImageI
 	//Should never return, but can, so check.
 	std::shared_ptr<const RGBAImageI> ptr = nullptr;
 
-	if (status != CompressionStatus::DECOMPRESSED) {
-		std::unique_lock lock(lockstate);
-		if ((LoadImage() | DecompressImageData()) == 0) {
-			ptr = std::make_shared<const RGBAImageI>(imageData);
-		}
-		lock.release();
-	}
-	else if (status == CompressionStatus::DECOMPRESSED) {
+	if (status == CompressionStatus::DECOMPRESSED) {
 		ptr = std::make_shared<const RGBAImageI>(imageData);
 	}
 	return std::tuple<std::shared_lock<std::shared_mutex>, std::shared_ptr<const RGBAImageI>>{

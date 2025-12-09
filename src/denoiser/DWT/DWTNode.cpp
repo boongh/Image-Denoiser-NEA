@@ -217,7 +217,7 @@ int Denoiser::DWT::DecNode::RecomposeNode(ReconMode mode)
 		const std::array<const double, 4> coefficients = (pass == 0) ? sym2.rec_lo  : sym2.rec_hi;
 		std::vector<float> src = pass == 0 ? low->brightnessData : high->brightnessData;
 		for (int y = (direction == 1) ? offset : 0; y < columnBound; y++) {
-			for (int x = (direction == 0) ? offset : 0; x < rowBound; x++) {
+			for (int x = (direction == 0) ? offset : 0; x < rowBound	; x++) {
 				double sum = 0;
 				for (int w = 0; w < filterLength; ++w) {
 

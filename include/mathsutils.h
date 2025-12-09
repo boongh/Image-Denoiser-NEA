@@ -4,6 +4,13 @@
 #include <vector>
 #include <span>
 
+#ifdef DEBUG
+
+#include <iostream>
+
+#endif //DEBUG
+
+
 namespace MathsUtils
 {
     void PosDecompose(
@@ -84,7 +91,12 @@ namespace MathsUtils
     /// <param name="value"></param>
     template <typename T>
     void SoftThreshold(std::span<T>& data, T value) {
+
+        #pragma omp parallel for
         for (T& element : data) {
+
+            /*
+            Equivalent to
             if (element > value) {
                 element -= value;
             }
@@ -94,6 +106,10 @@ namespace MathsUtils
             else {
                 element = 0;
 			}
+            */
+
+            element = (std::abs(element) > value) * (element - std::copysign(1.0f, element) * value);
+            
         }
     }
 
