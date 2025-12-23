@@ -6,7 +6,7 @@
 #include <stdexcept>
 #include <cmath>
 #include <print>
-#include <Eigen/Dense>
+#include <array>
 #include "mathsutils.h"
 
 namespace Denoiser {
@@ -42,10 +42,6 @@ namespace Denoiser {
 	int BilateralFilter(std::span<const PixelRGBA> src,
 		unsigned int width, unsigned int height,
 		int halfWidth, int halfHeight, double strnSpatial, double strnIntensity);
-
-    std::vector<PixelRGBA> FastBilateralFilterApproximation(std::span<const PixelRGBA> src,
-        unsigned int width, unsigned int height,
-        int halfWidth, int halfHeight, double strnSpatial, double strnIntensity, double threashold);
 
     std::vector<PixelRGBA> FastBFApprox2(std::span<const PixelRGBA> src,
         unsigned int width, unsigned int height,

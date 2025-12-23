@@ -218,6 +218,9 @@ private:
 
     void ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func);
 
+
+    double g_scale;
+
     ImVec4 clearColor;
     ImGuiID g_viewport_id;
 

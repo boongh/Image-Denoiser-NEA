@@ -5,6 +5,7 @@
 #include "FileManagement.h"
 #include <imgui.h>
 #include <tinyfiledialogs.h>
+#include <GLFW/glfw3.h>
 
 #ifdef DEBUG
 
@@ -21,15 +22,27 @@ Application::Application(ImVec4 backgroundColor) :
     g_ImageListView(true), 
     g_ImagePreview(true), 
     g_docklefttemp(false), 
-    g_viewport_id(0){
+    g_viewport_id(0),
+    clearColor(backgroundColor)
+{
     //Default format filter
     void* ptrmalloc = malloc(terminalSizeLimit);
     if (ptrmalloc == nullptr) {
         throw std::runtime_error("Malloc failed, you have a bigger problem");
     }
+
     terminalbuffer = static_cast<char*>(ptrmalloc);
-    clearColor = backgroundColor;
     currentApp = this;
+
+    //GLFWmonitor* p_monitor = glfwGetPrimaryMonitor();
+    //const GLFWvidmode* vidMode = glfwGetVideoMode(p_monitor);
+    //
+    //vidMode->width;
+    //
+    //g_scale = 1;
+
+
+
     return;
 }
 
@@ -203,8 +216,8 @@ void Application::DisplayMenu() {
             if (ImGui::MenuItem("Load All", "CTRL+SHIFT+A")) {
 				LoadAllImages();
             }
-
             ImGui::EndMenu();
+
 		}
 
 #ifdef DEBUG
@@ -212,6 +225,8 @@ void Application::DisplayMenu() {
             if (ImGui::MenuItem("Toggle Dev Mode", "CTRL+SHIFT+A")) {
                 g_useDebug = !g_useDebug;
             }
+
+            ImGui::EndMenu();
         }
 #endif //DEBUG
 
@@ -816,7 +831,7 @@ int Application::Run() {
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application, or clear/overwrite your copy of the keyboard data.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
         glfwPollEvents();
-        if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0)
+        if (glfwGetWindowAttrib(window, GLFW_ICONIFIED) != 0) 
         {
             ImGui_ImplGlfw_Sleep(10);
             continue;
@@ -924,11 +939,6 @@ int Application::Run() {
                     Manager.DestroyRenderer(prevselection);
                     if (g_useCompress) {
                         int comp = prevselection->TryCompressImageData();
-
-                        //Only fails if compressor fails unrocoverably
-                        if (comp != 0) {
-                            throw std::exception("COMPRESION FAILED", comp);
-                        }
                     };
                 }
                 prevselection = currselection;
@@ -992,7 +1002,7 @@ void Application::DEBUGRUN(const char* infiles) {
     ImportImages(paths);
 
     //SplitPaths(infiles, paths);
-    for (int i = 0; i < 25; i++) {
+    for (int i = 0; i < 9; i++) {
         ImportImages(paths);
         /*filterParameters.DWTParameter.decimationLevel = 1 + 2 * i;
         DWTDenoise(Manager.GetImage(i));*/
@@ -1197,3 +1207,4 @@ void LogtoAppTerminal(std::string logmsg)
 {
     Application::currentApp->LogTerminal(logmsg);
 }
+////////////////////////////////////////////

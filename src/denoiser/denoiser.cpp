@@ -3,7 +3,6 @@
 #include "denoiser.h"
 #include <unordered_map>
 #include <cmath>
-#include <Eigen/Dense>
 #include <iostream>
 #include <memory>
 

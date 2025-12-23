@@ -83,11 +83,9 @@ int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
 	static float scale = 1;
 	static float targetScale = 1;
 
-	scale = std::min(scale, 10.0f);
-	scale = std::max(scale, 0.1f);
-
-	targetScale = std::min(targetScale, 10.0f);
-	targetScale = std::max(targetScale, 0.1f);
+	if (targetScale == 0) {
+		targetScale = DBL_MIN;
+	}
 
 	ImVec2 displayImageDimension = ImVec2(width * scale, height * scale);
 	ImVec2 imgPixelPos = ImVec2((io.MousePos.x - pos.x) / scale, (io.MousePos.y - pos.y) / scale);
@@ -130,7 +128,9 @@ int ImageRenderer::DisplayImage(ImVec2 widgetDimension, ImVec4 bgColor) {
 			ImGui::Text("RGBA Val (%d, %d, %d, %d)", P.r, P.g, P.b, P.a);
 		}
 		ImGui::Text("Min: (%.0f, %.0f)", region_x, region_y);
+
 		ImGui::Text("Max: (%.0f, %.0f)", region_x + widgetDimension.x * zoom, region_y + widgetDimension.y * zoom);
+		ImGui::Text("Zoom: %f", targetScale);
 
 
 		ImVec2 uv0 = ImVec2((region_x) / width, (region_y) / height);

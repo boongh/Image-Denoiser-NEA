@@ -1,7 +1,6 @@
 #include "Denoiser.h"
 #include <vector>
 #include <algorithm>
-#include <MultiFFT.h>
 
 
 static constexpr double INVERSECOLOR = 1.0 / 255.0;
@@ -56,35 +55,6 @@ static std::vector<double> GaussianOnRange(double min, double max, double sigma,
 	}
 
 	return result;
-}
-
-std::vector<PixelRGBA> Denoiser::FastBilateralFilterApproximation(std::span<const PixelRGBA> src, 
-	unsigned int width, unsigned int height, 
-	int halfWidth, int halfHeight, 
-	double strnSpatial, double strnIntensity, 
-	double threashold) {
-
-
-	if (src.empty() || width == 0 || height == 0 || halfWidth < 0 || halfHeight < 0) {
-		throw std::invalid_argument("Invalid input parameters for FastBilateralFilterApproximation.");
-	}
-	
-
-	int T = 255; //Temporary, should be calculated based on the max difference in the image.
-	int TMAX = std::max(static_cast<double>(T), 3.2 * strnIntensity);
-	double v = 2 * PI / (2 * TMAX + 1);
-
-	int K = 20; // Number of samples for the Gaussian approximation
-
-	std::vector<double> gaussianforT = GaussianOnRange(-256, 255, strnIntensity, 0, 1.0, 1);
-
-	Signal<double> signalGaussian(gaussianforT, 1, 1);
-
-	FrequencyDomain gaussianFT = MultiFFT::FastFT1D(signalGaussian);
-
-//TODO
-
-	return std::vector<PixelRGBA>();
 }
 
 std::vector<PixelRGBA> Denoiser::FastBFApprox2(std::span<const PixelRGBA> src, unsigned int width, unsigned int height, int halfWidth, int halfHeight, double strnSpatial, double strnIntensity)

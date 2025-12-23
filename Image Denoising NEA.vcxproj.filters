@@ -15,15 +15,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Dependencies\MultiFFT\src\MultiFFT.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Dependencies\MultiFFT\src\MultiFFTSignal.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Dependencies\MultiFFT\src\SignalGenerator.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Dependencies\Imgui\imgui.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -146,18 +137,6 @@
     <ClInclude Include="Dependencies\glfw\include\GLFW\glfw3native.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Dependencies\MultiFFT\include\FrequencyDomain.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Dependencies\MultiFFT\include\MultiFFT.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Dependencies\MultiFFT\include\MultiFFTSignal.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Dependencies\MultiFFT\include\SignalGenerator.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Dependencies\Imgui\imconfig.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -245,5 +224,8 @@
   </ItemGroup>
   <ItemGroup>
     <Xml Include="..\..\..\..\cdrive backup\downloads\E.Downloads\UI.drawio.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <Library Include="Dependencies\glfw\lib-vc2010-64\glfw3.lib" />
   </ItemGroup>
 </Project>
