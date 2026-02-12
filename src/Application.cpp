@@ -295,7 +295,7 @@ void Application::DisplayMenu() {
 
         ImGui::EndMenuBar();
     }
-}|
+}
 
 void Application::DisplayDenoiseParamMenu() {
 
