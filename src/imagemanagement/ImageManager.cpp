@@ -163,12 +163,8 @@ void ImageManager::DestroyRenderer(std::shared_ptr<ImageEntry> imageEntry) {
 }
 
 std::shared_ptr<ImageEntry> ImageManager::GetImage(int id) { return (id >= 0 && id < imageEntries.size()) ? imageEntries[id]->AcquireRead() : nullptr; }
-std::string ImageManager::GetPath(int id) const { return imageEntries[id]->GetFilePathString(); }
+std::filesystem::path ImageManager::GetPath(int id) const { return imageEntries[id]->GetSourcePath(); }
 
-std::filesystem::path ImageManager::GetPath_path(int id) const
-{
-	return imageEntries[id]->GetFilePath_path();
-}
 
 ImVec2 ImageManager::GetDim(int id) const {
 	auto image = imageEntries[id];

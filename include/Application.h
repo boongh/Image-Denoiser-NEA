@@ -203,6 +203,7 @@ private:
 	void DisplayImageList(std::shared_ptr<ImageEntry>& selection);
 	void DisplayImageSaveMenu();
     void DisplayDebugMenu();
+    void DisplayWindowsMenu();
 
     void DisplayTerminal();
 
@@ -219,7 +220,7 @@ private:
     void ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func);
 
 
-    double g_scale;
+    float g_scale;
 
     ImVec4 clearColor;
     ImGuiID g_viewport_id;
@@ -234,6 +235,11 @@ private:
     bool g_firstframe = true;
     bool g_useCompress = true;
     bool g_useDebug = true;
+    bool g_openSettings = false;
+
+
+    bool g_refreshLayout = false;
+	std::string g_layoutPath;
 
     std::mutex logterminalLock = std::mutex();
 
@@ -245,4 +251,7 @@ private:
     //Menu functions for access outside of menu
     void LoadAllImages();
 	void OpenImageFile();
+
+    void SaveWorkspaceConfig();
+	void LoadWorkspaceConfig();
 };

@@ -82,10 +82,8 @@ public:
 
 	/// <summary>
 	/// Gets read access to the entire image data
-	/// UNSAFE, DOES NOT LOCK THE IMAGE MUTEX
 	/// </summary>
 	/// <returns></returns>
-	std::span<const PixelRGBA> ReadImageData() const;
 	std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>> ReadWriteImageData();
 
 
@@ -180,8 +178,17 @@ public:
 
 
 	//<--Getters for metadata-->
-	std::string GetFilePathString() const;
-	std::filesystem::path GetFilePath_path() const;
+
+	/// <summary>
+	/// Get the path to the source image file. that the object reference
+	/// </summary>
+	/// <returns></returns>
+	std::filesystem::path GetSourcePath() const;
+
+	/// <summary>
+	/// Get only just the file name of the source image file. Exists for convenience since it is commonly used
+	/// </summary>
+	/// <returns></returns>
 	std::filesystem::path GetFileName() const;
 
 	int GetWidth() const;
@@ -277,8 +284,7 @@ public:
 
 	std::shared_ptr<ImageEntry> GetImage(int id);
 
-	std::string GetPath(int id) const;
-	std::filesystem::path GetPath_path(int id) const;
+	std::filesystem::path GetPath(int id) const;
 	ImVec2 GetDim(int id) const;
 
 	void RefreshRenderer(std::shared_ptr<ImageEntry> imageEntry);

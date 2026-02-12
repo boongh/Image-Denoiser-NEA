@@ -23,7 +23,8 @@ Application::Application(ImVec4 backgroundColor) :
     g_ImagePreview(true), 
     g_docklefttemp(false), 
     g_viewport_id(0),
-    clearColor(backgroundColor)
+    clearColor(backgroundColor),
+	g_scale(1.0)
 {
     //Default format filter
     void* ptrmalloc = malloc(terminalSizeLimit);
@@ -110,6 +111,8 @@ int Application::InitWindow(GLFWwindow*& windowRet) {
     //io.ConfigViewportsNoAutoMerge = true;
     //io.ConfigViewportsNoTaskBarIcon = true;
 
+    //io.DisplayFramebufferScale = scale;
+
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
     //ImGui::StyleColorsLight();
@@ -186,7 +189,7 @@ void Application::BuildDock()
 
 
         //Create a window that is at the main window position and size
-        ImGui::Begin("DockSpace Demo", nullptr, window_flags);
+        ImGui::Begin("DockSpace", nullptr, window_flags);
 
         ImGui::PopStyleVar(4);
 
@@ -199,6 +202,48 @@ void Application::BuildDock()
     }
 }
 
+void Application::LoadWorkspaceConfig() {
+
+    const char* workspaceConfFilter[] = { "*.ini" };
+
+    std::vector<std::string> workspaceconfpath{};
+
+    FileSelection(
+        "Open Workspace Configuration",
+        "",
+        workspaceConfFilter,
+        1,
+        "ImGuiIni (*.ini)",
+        0,
+        workspaceconfpath
+	);
+
+    if (workspaceconfpath.size() > 0) {
+        //Load workspace config
+        
+		g_refreshLayout = true;
+		g_layoutPath = workspaceconfpath[0];
+	}
+}
+
+void Application::SaveWorkspaceConfig() {
+
+    const char* workspaceConfFilter[] = { "*.ini" };
+
+    char* confSavePath = tinyfd_saveFileDialog(
+        "Save Workspace Configuration",
+        "",
+        1,
+        workspaceConfFilter,
+        "ImGuiIni (*.ini)"
+    );
+
+    if (strnlen_s(confSavePath, 250) > 0) {
+        //Load workspace config
+        ImGui::SaveIniSettingsToDisk(confSavePath);
+    }
+}
+
 void Application::DisplayMenu() {
 
     if (ImGui::BeginMenuBar())
@@ -208,6 +253,15 @@ void Application::DisplayMenu() {
             if (ImGui::MenuItem("Open file", "CTRL+O")) {
 				OpenImageFile();
             }
+
+            if (ImGui::MenuItem("Open workspace config")) {
+                LoadWorkspaceConfig();
+            }
+
+            if (ImGui::MenuItem("Save workspace config")) {
+                SaveWorkspaceConfig();
+            }
+            
             ImGui::EndMenu();
         }
 
@@ -219,6 +273,15 @@ void Application::DisplayMenu() {
             ImGui::EndMenu();
 
 		}
+
+        if (ImGui::BeginMenu("Windows"))
+        {
+            if (ImGui::MenuItem("Toggle Open Settings")) {
+                g_openSettings = !g_openSettings;
+            }
+            ImGui::EndMenu();
+
+        }
 
 #ifdef DEBUG
         if (ImGui::BeginMenu("Debug")) {
@@ -232,7 +295,7 @@ void Application::DisplayMenu() {
 
         ImGui::EndMenuBar();
     }
-}
+}|
 
 void Application::DisplayDenoiseParamMenu() {
 
@@ -255,6 +318,9 @@ void Application::DisplayDenoiseParamMenu() {
     ImGui::Combo("Denoise Algorithm", &currentAlgo, denoiseralgo, 4);
 
     ImGui::Separator();
+
+    try {
+
 
     switch (currentAlgo) {
     default:
@@ -334,6 +400,11 @@ void Application::DisplayDenoiseParamMenu() {
 
         break;
     }
+
+    } catch (const std::exception& e) {
+        ImGui::Text("Parameter Error: %s", e.what());
+	}
+
 }
 
 void Application::ForAllSelectedImage(const std::function<void(std::shared_ptr<ImageEntry>)>& func) {  
@@ -430,7 +501,7 @@ void Application::DisplayImageList(std::shared_ptr<ImageEntry>& selection) {
                 const char* item_category = "";
                 char label[256];
 
-                fs::path item_path = Manager.GetPath_path(n);
+                fs::path item_path = Manager.GetPath(n);
                 fs::path filename = item_path.filename();
                 fs::path parentDir = item_path.parent_path();
 
@@ -594,14 +665,18 @@ void Application::DisplayImageSaveMenu()
     ImGui::SameLine();
 
     if (ImGui::Button("Open with File Explorer")) {
-        const char* folder = OpenFolderDialogue("Choose destination directory");
-        if (folder != nullptr) {
-            std::string folderstr(folder);
-            size_t len = folderstr.length();
-            if (len + 1 < sizeof(buf)) {
-                strcpy_s(buf, folderstr.c_str());
+        try {
+            const char* folder = OpenFolderDialogue("Choose destination directory");
+            if (folder != nullptr) {
+                std::string folderstr(folder);
+                size_t len = folderstr.length();
+                if (len + 1 < sizeof(buf)) {
+                    strcpy_s(buf, folderstr.c_str());
+                }
             }
-        }
+        } catch (const std::exception& e) {
+            LogTerminal(std::string("Error while opening file explorer: ") + e.what() + "\n");
+		}
     }
 
     static int currentFormat = 0;
@@ -610,55 +685,79 @@ void Application::DisplayImageSaveMenu()
 
     if (ImGui::Button("Save Image As")) {
 
-        std::unordered_map<std::string, ValidFormatter> formatter{
-        {"\\[DATE\\(\(.*?\)\\)\\]", [](std::smatch match) {
-                time_t rawtime;
-                struct tm* timeinfo;
-
-                time(&rawtime);
-                timeinfo = localtime(&rawtime);
-                char buffer[256];
-                strftime(buffer, 256, match[1].str().c_str(), timeinfo);
-                return std::string(buffer);
-
-                return match.str();
-
-            }}
-        };
-
         std::vector<std::tuple<fs::path, const RGBAImageI>> imageSaveList;
 
-        //Make sure to maintain read permission to lock writes
-        std::vector<std::tuple<slockmutex, std::shared_ptr<const RGBAImageI>>> readperms;
-        int count = 0;
+        try {
 
-        for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
-            if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
+            int* currCount = static_cast<int*>(calloc(1, sizeof(int)));
 
-                std::shared_ptr<ImageEntry> image = Manager.GetImage(idx);
-                if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
-                    readperms.push_back(image->RGBAIRead());
-                    auto& readperm = readperms[count];
-                    auto RGBAImageIptr = std::get<1>(readperm);
-                    count++;
 
-                    //Insert extra, file dependent formatter after
-                    formatter.insert({ "\\[FILENAME\\]", [&](std::smatch str) {
-                          return image->GetFileName().stem().string(); } });
+            ///Item Specific Formatter///
+            std::unordered_map<std::string, ValidFormatter> formatter{
+            {"\\[DATE\\(\(.*?\)\\)\\]", [](std::smatch match) {
+                    time_t rawtime;
+                    struct tm* timeinfo;
 
-                    fs::path filepath = fs::path(buf) / fs::path(image->GetFileName());
-                    filepath = FormatPath(formatter, filepath);
-                    filepath = PathCleanup(filepath);
+                    time(&rawtime);
+                    timeinfo = localtime(&rawtime);
+                    char buffer[256];
+                    strftime(buffer, 256, match[1].str().c_str(), timeinfo);
+                    return std::string(buffer);
+                }},
+            {"\\[COUNT\\]", [currCount](std::smatch match) {
+                    int lastcount = *currCount;
+				    currCount[0] = lastcount + 1;
+                    return std::to_string(lastcount);
+            }}
+            };
+            //////
 
-                    imageSaveList.push_back(std::make_tuple(filepath, *RGBAImageIptr));
-                }
-                else {
-                    return;
+
+            //Make sure to maintain read permission to lock writes
+            std::vector<std::tuple<slockmutex, std::shared_ptr<const RGBAImageI>>> readperms;
+            int count = 0;
+
+            for (int idx = 0; idx < Manager.GetImageCount(); idx++) {
+                if (Multiselection.Contains(Multiselection.GetStorageIdFromIndex(idx))) {
+
+                    std::shared_ptr<ImageEntry> image = Manager.GetImage(idx);
+                    if (image->LoadImage() == 0 && image->DecompressImageData() == 0) {
+                        readperms.push_back(image->RGBAIRead());
+                        auto& readperm = readperms[count];
+                        auto RGBAImageIptr = std::get<1>(readperm);
+                        count++;
+
+                        //Insert extra, file dependent formatter after
+                        formatter.insert({ "\\[FILENAME\\]", [&](std::smatch str) {
+                              return image->GetFileName().stem().string(); } });
+
+                        fs::path filepath = fs::path(buf) / fs::path(image->GetFileName());
+                        filepath = FormatPath(formatter, filepath);
+                        filepath = PathCleanup(filepath);
+
+                        imageSaveList.push_back(std::make_tuple(filepath, *RGBAImageIptr));
+                    }
+                    else {
+                        return;
+                    }
                 }
             }
         }
+        catch (std::exception e) {
+            LogTerminal(std::string("Error while opening file explorer: ") + e.what() + "\n");
+        }
 
-        SaveImages(imageSaveList, static_cast<ImageFormat>(currentFormat));
+        //Catch last ditch exceptions
+
+        try {
+            SaveImages(imageSaveList, static_cast<ImageFormat>(currentFormat));
+
+        }
+        catch (const std::exception& e) {
+            LogTerminal(std::string("Error during save: ") + e.what() + "\n");
+            return;
+        }
+
 
     }
 }
@@ -709,6 +808,13 @@ void Application::DisplayDebugMenu()
     ImGui::Text("Compile with DEBUG defined to enable advanced dev mode");
 #endif //DEBUG
 
+}
+
+void Application::DisplayWindowsMenu()
+{
+    ImGui::InputFloat("Scale1##WS", &g_scale, 1, 5);
+    ImGuiIO& io = ImGui::GetIO();
+    io.FontGlobalScale = g_scale;
 }
 
 void Application::DisplayTerminal()
@@ -825,6 +931,13 @@ int Application::Run() {
 
     while (!glfwWindowShouldClose(window))
     {
+
+        //refresh layout
+        if(g_refreshLayout){
+            ImGui::LoadIniSettingsFromDisk(g_layoutPath.c_str());
+            g_refreshLayout = false;
+		}
+
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
         // - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application, or clear/overwrite your copy of the mouse data.
@@ -880,6 +993,16 @@ int Application::Run() {
             DisplayTerminal();
         }
         ImGui::End();
+
+
+        if (g_openSettings) {
+            ImGui::Begin("Windows Settings", nullptr);
+            {
+                DisplayWindowsMenu();
+            }
+            ImGui::End();
+
+        }
 
 		ImGui::Begin("Preview", nullptr);
 

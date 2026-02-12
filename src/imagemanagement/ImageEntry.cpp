@@ -23,11 +23,6 @@ ImageEntry::ImageEntry(std::span<PixelRGBA> src, unsigned int w, unsigned int h,
 	std::memcpy(imageData.data.data(), src.data(), w * h * sizeof(PixelRGBA));
 }
 
-
-std::span<const PixelRGBA> ImageEntry::ReadImageData() const {
-	return std::span<const PixelRGBA>(imageData.data.data(), imageData.data.size());
-}
-
 std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>> ImageEntry::ReadWriteImageData()
 {
 	return std::tuple<std::unique_lock<std::shared_mutex>, std::span<PixelRGBA>>{
@@ -94,50 +89,42 @@ int ImageEntry::WriteSpan(size_t tlx, size_t tly, std::vector<std::span<PixelRGB
 int ImageEntry::SetPixel(int x, int y, int r, int g, int b, int a) {
 	std::unique_lock lock(lockstate);
 
-	try {
-
-		if (CheckBound(x, y)) {
-			return -1; // Out of bounds
-		}
-		else if (!IsDecompressed()) {
-			return -2; // Image not fully in memory
-		}
-		else if (!IsFree()) return -2;
-
-		imageData[(y * width + x)] = PixelRGBA(r, g, b, a);
+	if (CheckBound(x, y) != 0) {
+		return -1; // Out of bounds
 	}
-	catch (std::exception e) {
-		return -1;
+	else if (!IsDecompressed()) {
+		return -2; // Image not fully in memory
 	}
+	else if (!IsFree()) return -2;
+
+	imageData[(y * width + x)] = PixelRGBA(r, g, b, a);
+
 	return 0; // Success
 }
 
 
 int ImageEntry::GetPixel(int x, int y, PixelRGBA& p) const {
 	std::shared_lock lock(lockstate);
-	assert(IsDecompressed());
+	if (!IsDecompressed()) {
+		return -1; // Image not fully in memory
+	}
 
-	p = imageData.data[x + width * y];
-
+	p = imageData.data.at(x + width * y);
 	return 0;
 }
 
 
 int ImageEntry::SetPixel(int x, int y, const PixelRGBA& p) {
 	std::unique_lock lock(lockstate);
-	try {
+	
+	if (CheckBound(x, y) != 0) {
+		return -1; // Out of bounds
+	}
+	else if (!IsDecompressed()) {
+		return -2; // Image not fully in memory
+	}
 
-		if (CheckBound(x, y)) {
-			return -1; // Out of bounds
-		}
-		else if (!IsDecompressed()) {
-			return -2; // Image not fully in memory
-		}
-		imageData[(y * width + x)] = p;
-	}
-	catch (std::exception e) {
-		return -1;
-	}
+	imageData[(y * width + x)] = p;
 	return 0; // Success
 }
 
@@ -294,25 +281,30 @@ std::shared_ptr<ImageEntry> ImageEntry::AcquireRead() const {
 bool ImageEntry::IsLoaded() const { return status != CompressionStatus::NOT_LOADED; }
 bool ImageEntry::IsDecompressed() const { return status == CompressionStatus::DECOMPRESSED; }
 bool ImageEntry::IsFree() const { return shared_from_this().use_count() == 1; }
-std::string ImageEntry::GetFilePathString() const { return path.string(); }
-std::filesystem::path ImageEntry::GetFilePath_path() const { return path; }
+
+std::filesystem::path ImageEntry::GetSourcePath() const { return path; }
 std::filesystem::path ImageEntry::GetFileName() const { return path.filename(); }
+
 int ImageEntry::GetWidth() const {
-	assert(IsDecompressed() || IsLoaded()); // Ensure the image is loaded or decompressed before accessing width
-	return width;
+	if (IsDecompressed() || IsLoaded()) { // Ensure the image is loaded or decompressed before accessing width
+		return width;
+	}
+	return -1;
 }
 int ImageEntry::GetHeight() const {
-	assert(IsDecompressed() || IsLoaded()); // Ensure the image is loaded or decompressed before accessing width
-	return height;
+	if (IsDecompressed() || IsLoaded()) { // Ensure the image is loaded or decompressed before accessing width
+		return height;
+	}
+	return -1;
 }
 int ImageEntry::GetChannels() const {
-	assert(IsDecompressed() || IsLoaded()); // Ensure the image is loaded or decompressed before accessing width
-	return channels;
+	if (IsDecompressed() || IsLoaded()) { // Ensure the image is loaded or decompressed before accessing width
+		return channels;
+	}
+	return -1;
 }
 
-ImageEntry::CompressionStatus ImageEntry::GetStatus() const {
-	return status;
-}
+ImageEntry::CompressionStatus ImageEntry::GetStatus() const { return status; }
 
 
 #pragma endregion

@@ -123,7 +123,10 @@ int PrepFilePath(fs::path& path)
 		std::regex rgx(R"([\s\\]*(\\)[\s\\]*)");
 		path = std::regex_replace(path.string(), rgx, "$1");
 
-		fs::create_directories(path.parent_path());
+		if (!path.parent_path().empty()) {
+			fs::create_directories(path.parent_path());
+		}
+
 		auto filename = path.stem();
 		auto extension = path.extension();
 

@@ -9,23 +9,25 @@
 #pragma endregion
 
 int main() {
-	Application app1;
 
+	try {
+		Application app1;
 
 #ifdef DEBUG
 #ifdef BENCHMARK
-	app1.BENCHMARKRUN(TESTDATA);
+		app1.BENCHMARKRUN(TESTDATA);
 #endif // BENCHMARK
-
-	app1.DEBUGRUN(TESTDATA);
-
-
+		app1.DEBUGRUN(TESTDATA);
 #endif // DEBUG
 
 #ifndef BENCHMARK
-	app1.Run();
-
+		app1.Run();
 #endif // !BENCHMARK
+
+	} catch (const std::exception& e) {
+		std::cerr << "Fatal error: " << e.what() << std::endl;
+		return -1;
+	}
 
 	return 0;
 }	
